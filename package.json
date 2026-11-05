@@ -1,0 +1,15 @@
+{
+  "name": "travel-scratch-map",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A pixel-art US first-visit travel map for two travelers. Public browser-local edition.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

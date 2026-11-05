@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scratch map — United States</title>
+<link rel="icon" href="icon.svg"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0e1418"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="icon.svg">
+<meta name="description" content="Alex and Sam’s private shared travel map, with color-coded visits, synced memories, photos and portable backups.">
+<meta name="theme-color" content="#0e1418">
+<style>
+  :root{
+    --paper:#0e1418;
+    --paper-deep:#1c262c;
+    --land:#243139;
+    --land-hi:#31424b;
+    --foil:#2e3d46;
+    --ink:#e7ecea;
+    --ink-60:#8a9ba3;
+    --ink-30:#5a6a72;
+    --amber:#f0a52c;
+    --amber-hi:#ffc25e;
+    --amber-deep:#b9760d;
+    --amber-edge:#8c5c0b;
+    --green:#4fdca4;
+    --green-soft:#2fae7d;
+    --panel:#131b20;
+    --field:#1a242a;
+    --line:#25333a;
+    --rad:3px;
+    --shadow:0 1px 0 rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input{font:inherit;color:inherit}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- shell ---------- */
+  #app{display:grid;grid-template-columns:1fr 336px;grid-template-rows:auto 1fr;height:100dvh}
+  header{
+    grid-column:1/-1;display:flex;align-items:baseline;gap:16px;
+    padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel);
+  }
+  header h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+  header .tag{color:var(--ink-60);font-size:13px}
+  header .score{margin-left:auto;display:flex;gap:20px;align-items:flex-end}
+  .meter{display:block;height:3px;margin-top:5px;background:var(--line);border-radius:2px;overflow:hidden}
+  .meter u{display:block;height:100%;width:0;background:var(--amber);transition:width .45s ease}
+  .score b{font-size:20px;font-weight:650;letter-spacing:-.02em}
+  .score span{color:var(--ink-60);font-size:12.5px;margin-left:5px}
+
+  /* ---------- map ---------- */
+  #stage{position:relative;overflow:hidden;background:var(--paper)}
+  svg#map{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  svg#map.dragging{cursor:grabbing}
+
+  .st{fill:url(#foil);stroke:var(--paper);stroke-width:1;vector-effect:non-scaling-stroke;
+      transition:fill .3s ease;cursor:pointer}
+  .st:hover{fill:url(#foilHi)}
+  .st.on{fill:var(--amber);stroke:var(--amber-edge)}
+  .st.on:hover{fill:var(--amber-hi)}
+  .st.nofx{transition:none}
+  .foil-bg{fill:var(--land)} .foil-bg-hi{fill:var(--land-hi)}
+  .foil-line{stroke:var(--foil);stroke-width:1.2}
+  #liftDrop{flood-color:#000;flood-opacity:.6}
+  #gGlow path{fill:var(--amber);opacity:.32}
+  .reveal{fill:var(--amber);stroke:var(--amber-edge);stroke-width:1;vector-effect:non-scaling-stroke;
+          pointer-events:none}
+  .fleck{fill:#b9c9d1;pointer-events:none}
+  .st.focus{stroke:var(--ink);stroke-width:1.6}
+  .outline{fill:none;stroke:var(--ink);stroke-width:1;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.16;pointer-events:none}
+
+  .lbl{fill:var(--ink);font-size:11px;font-weight:600;text-anchor:middle;paint-order:stroke;
+       stroke:rgba(5,9,12,.92);stroke-width:3px;stroke-linejoin:round;pointer-events:none;user-select:none}
+  .lead{stroke:var(--ink-30);stroke-width:.8;fill:none;vector-effect:non-scaling-stroke;pointer-events:none}
+  .lbl.side{text-anchor:start}
+
+  .cd{stroke-width:1.1;vector-effect:non-scaling-stroke;cursor:pointer}
+  .cd.off{fill:var(--paper);stroke:#8697a0}
+  .cd.off:hover{stroke:var(--green);fill:var(--green-soft)}
+  .cd.on{fill:var(--green);stroke:var(--paper);stroke-width:1.6}
+  .cd.on:hover{fill:var(--green-soft)}
+  .cl{fill:#d6e0e3;text-anchor:middle;paint-order:stroke;stroke:rgba(5,9,12,.92);stroke-width:2.4px;
+      stroke-linejoin:round;pointer-events:none;user-select:none}
+  .cl.on{fill:var(--green);font-weight:650}
+  .cl.rev{fill:#241703;stroke:rgba(255,255,255,.45)}
+  .cl.rev.on{fill:#0c3d2a;stroke:rgba(255,255,255,.55)}
+  .cd.off.rev{stroke:var(--amber-edge)}
+  .cd.on.rev{stroke:#2b1c02}
+  .lbl.rev{fill:#241703;stroke:rgba(255,255,255,.4)}
+  .burst{fill:none;stroke:var(--amber-hi);stroke-width:1.6;vector-effect:non-scaling-stroke;pointer-events:none}
+
+  /* map chrome */
+  .chrome{position:absolute;display:flex;gap:6px;z-index:3}
+  .chrome.tl{top:12px;left:12px}
+  .chrome.br{bottom:12px;right:12px;flex-direction:column;align-items:flex-end;gap:8px}
+    .pill{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow);
+        display:flex;overflow:hidden}
+  .pill button{padding:7px 12px;font-size:13px;color:var(--ink-60);border-right:1px solid var(--line)}
+  .pill button:last-child{border-right:none}
+  .pill button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:600}
+  .pill button:not([aria-pressed="true"]):hover{background:var(--paper-deep);color:var(--ink)}
+  .zoomctl button{width:34px;padding:7px 0;text-align:center;font-size:15px}
+  #bSound{padding:7px 10px;display:flex;align-items:center}
+  #bSound .ico{display:block}
+  #bSound .mute{display:none}
+  #bSound[aria-pressed="false"] .waves{display:none}
+  #bSound[aria-pressed="false"] .mute{display:block}
+
+  .legend{background:rgba(19,27,32,.93);border:1px solid var(--line);border-radius:var(--rad);
+          box-shadow:var(--shadow);padding:8px 12px;font-size:12px;color:var(--ink-60);line-height:1.75;
+          backdrop-filter:blur(3px)}
+  .legend i{display:inline-block;width:11px;height:11px;border:1px solid rgba(255,255,255,.14);
+            margin-right:7px;vertical-align:-1px;border-radius:1px}
+  .sw-on{background:var(--amber)} .sw-off{background:var(--land)}
+  .sw-city{background:var(--green);border-radius:50%!important}
+
+  .hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;
+        background:var(--ink);color:var(--paper);padding:7px 13px;border-radius:var(--rad);font-size:13px;
+        box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
+  .hint.show{opacity:1}
+
+
+  /* ---------- panel ---------- */
+  aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+  .search{padding:12px 14px;border-bottom:1px solid var(--line);position:relative}
+  .search input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--rad);background:var(--field)}
+  .search input:focus{outline:2px solid var(--amber);outline-offset:-1px;border-color:var(--amber)}
+  #results{position:absolute;left:14px;right:14px;top:48px;background:var(--field);border:1px solid var(--ink-30);
+           border-radius:var(--rad);box-shadow:var(--shadow);max-height:290px;overflow:auto;z-index:9;display:none}
+  #results.show{display:block}
+  #results button{display:flex;width:100%;text-align:left;padding:7px 10px;gap:8px;align-items:baseline;
+                  border-bottom:1px solid var(--line)}
+  #results button:last-child{border-bottom:none}
+  #results button:hover,#results button.sel{background:var(--paper-deep)}
+  #results .s{margin-left:auto;color:var(--ink-60);font-size:12px}
+  #results .mk{color:var(--green);font-size:12px;font-weight:650}
+  .empty{padding:12px;color:var(--ink-60);font-size:13px}
+
+  .listwrap{flex:1;overflow:auto;min-height:0}
+  .grouphead{display:flex;align-items:center;gap:8px;padding:9px 14px 7px;color:var(--ink-60);font-size:12px;
+             position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);z-index:2}
+  .grouphead .sp{margin-left:auto}
+  .row{display:flex;align-items:center;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,.05);
+       box-shadow:inset 3px 0 0 transparent}
+  .row:hover{background:var(--paper-deep)}
+  .row.v{box-shadow:inset 3px 0 0 var(--amber)}
+  .row .mark{width:18px;height:18px;flex:none;border:1.5px solid var(--ink-30);border-radius:3px;background:var(--field);
+             display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;color:transparent}
+  .row .mark:hover{border-color:var(--ink-60)}
+  .row .mark::after{content:'';position:absolute;inset:-6px}
+  .row .mark[data-s="on"]{background:var(--amber);border-color:var(--amber-edge);color:#2b1c02}
+  .row .nm{flex:1;text-align:left;padding:2px 0;font-size:13.5px}
+  .row.v .nm{font-weight:600}
+  .row .ct{color:var(--ink-60);font-size:12px}
+  .row .exp{width:20px;color:var(--ink-30);font-size:11px}
+  .row .exp:hover{color:var(--ink)}
+  .sub{padding:2px 14px 9px 40px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.035)}
+  .sub div{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:13px}
+  .sub .x{color:var(--ink-30);font-size:12px}
+  .sub .x:hover{color:#ff7a5c}
+  .sub .none{color:var(--ink-60);font-size:12.5px;padding:2px 0}
+
+  footer{border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  footer button{padding:6px 10px;font-size:12.5px;border:1px solid var(--line);border-radius:var(--rad);background:var(--field)}
+  footer button:hover{background:var(--paper-deep)}
+  footer .save{margin-left:auto;color:var(--ink-30);font-size:12px}
+  footer button.danger:hover{color:#ff7a5c;border-color:#ff7a5c}
+
+  details.how{border-top:1px solid var(--line)}
+  details.how summary{padding:9px 14px;cursor:pointer;font-size:12.5px;color:var(--ink-60);list-style:none}
+  details.how summary::-webkit-details-marker{display:none}
+  details.how summary:before{content:"+ ";font-weight:700}
+  details.how[open] summary:before{content:"– "}
+  details.how ul{margin:0 0 12px;padding:0 16px 0 32px;color:var(--ink-60);font-size:12.5px;line-height:1.7}
+
+  .score div{white-space:nowrap}
+  @media (max-width:860px){
+    #app{grid-template-columns:1fr;grid-template-rows:auto calc(100vw / 1.8 + 66px) 1fr}
+    aside{border-left:none;border-top:1px solid var(--line)}
+    #stage{border-bottom:1px solid var(--line)}
+    svg#map{top:52px}
+    .chrome.tl{top:9px;left:10px}
+    .chrome.br{top:9px;right:10px;bottom:auto;flex-direction:row}
+    .zoomctl button:not(#zFit){display:none}
+    header{padding:10px 14px;gap:10px}
+    header h1{font-size:15px;white-space:nowrap}
+    header .tag{display:none}
+    header .score{gap:14px}
+    header .score b{font-size:16px}
+    header .score span{font-size:11.5px}
+    .chrome.br .legend{display:none}
+    .hint{bottom:14px;max-width:84%;text-align:center}
+    .pill button{padding:8px 11px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  /* Night drive: quieter chrome, a spacious map, and a legible travel ledger. */
+  :root{--rad:10px;--ink-60:#a1b1b8;--ink-30:#7c909a;--line:#2a3942;--shadow:0 8px 28px #0003}
+  button,input{ -webkit-tap-highlight-color:transparent }
+  button:focus-visible,summary:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+  button:disabled{opacity:.4;cursor:default}
+  #app{grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:94px minmax(0,1fr);padding:0 24px 24px;gap:0 20px;max-width:1920px;margin:auto}
+  header{background:transparent;border:0;padding:20px 0;align-items:center;gap:12px}
+  .brand-icon{display:grid;place-items:center;width:42px;height:42px;border:1px solid #f0a52c50;border-radius:13px;color:var(--amber);background:#f0a52c0a;flex:none}
+  .brand-title h1{font-size:22px;letter-spacing:-.045em;line-height:1.2;font-weight:650}
+  .brand-title .tag{display:block;margin-top:5px;font-size:10px;letter-spacing:.19em;text-transform:uppercase}
+  header .score{gap:28px;align-items:center}
+  .score b{font-size:27px;font-weight:550;letter-spacing:-.045em}
+  .score span{font-size:12px}
+  .score .state-score{min-width:180px}
+  .meter{height:4px;margin-top:5px;background:#26343c}
+  .meter u{background:linear-gradient(90deg,var(--amber-deep),var(--amber-hi));border-radius:4px}
+  .score .city-score{padding-left:28px;border-left:1px solid var(--line)}
+  #stage{border:1px solid var(--line);border-radius:16px;background:radial-gradient(ellipse at 45% 50%,#1b2831 0%,#10191f 55%,#0e1418 100%);isolation:isolate}
+  #stage::before{content:'';position:absolute;inset:0;background-image:radial-gradient(#879daa25 .7px,transparent .7px);background-size:24px 24px;pointer-events:none;opacity:.42}
+  svg#map{top:64px;height:calc(100% - 132px)}
+  .chrome.tl{top:18px;left:18px;align-items:center;gap:10px}
+  .pill{background:#131b20ed;border-color:#34434d;border-radius:9px;padding:4px;gap:3px;box-shadow:0 3px 12px #0002}
+  .pill button{border:0;border-radius:6px;padding:8px 15px;font-size:12px;min-height:36px;font-weight:550}
+  .pill button[aria-pressed="true"]{background:#f0a52c1c;color:var(--amber-hi);box-shadow:inset 0 0 0 1px #f0a52c38}
+  #bSound{padding:8px 10px}
+  #bSound[aria-pressed="true"]{background:none;color:var(--ink-60);box-shadow:none}
+  .chrome.br{bottom:18px;right:18px;gap:14px}
+  .chrome.br .legend{position:fixed;display:none}
+  .map-legend{position:absolute;bottom:24px;left:22px;display:flex;align-items:center;gap:18px;color:var(--ink-60);font-size:11px;pointer-events:none}
+  .map-legend span{display:flex;align-items:center;gap:7px}
+  .map-legend i{width:8px;height:8px;border-radius:2px;background:var(--land);border:1px solid #657985}
+  .map-legend .sw-on{background:var(--amber);border-color:var(--amber)}
+  .map-legend .sw-city{background:var(--green);border-color:var(--green)}
+  .zoomctl button{width:36px;font-size:20px;padding:5px 0}
+  #zFit{border-left:1px solid var(--line);border-radius:0 5px 5px 0!important;margin-left:4px;color:var(--ink)}
+  .map-context{position:absolute;top:25px;right:22px;text-align:right;pointer-events:none}
+  .map-context b{display:block;font-size:12px;font-weight:550}
+  .map-context span{display:block;margin-top:3px;font-size:10px;color:var(--ink-60)}
+  .hint{bottom:78px;border-radius:8px;max-width:min(540px,90%);text-align:center;line-height:1.5;background:#dce9e3;padding:10px 16px}
+  aside{border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 6px 24px #0001}
+  .ledger-intro{padding:21px 20px 0}
+  .eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber-hi);font-weight:650}
+  .ledger-intro h2{font-size:20px;font-weight:550;letter-spacing:-.035em;margin:7px 0 6px}
+  .ledger-intro p{margin:0;color:var(--ink-60);font-size:12px;line-height:1.7}
+  .search{padding:18px 18px 16px;border:0}
+  .search label{display:block;color:var(--ink-60);font-size:11px;margin-bottom:7px}
+  .search-field{position:relative}
+  .search-field svg{position:absolute;top:13px;left:12px;pointer-events:none;color:var(--ink-60)}
+  .search input{padding:11px 12px 11px 37px;font-size:13px;border-color:#35454f;border-radius:8px;background:#0e161b}
+  .search input::placeholder{color:#7d929e}
+  #results{left:18px;right:18px;top:85px;max-height:320px;border-color:#4b605c;border-radius:9px}
+  #results button{padding:12px;font-size:12px;align-items:center;min-height:44px}
+  #results button.sel{box-shadow:inset 3px 0 var(--green);background:#21322e}
+  #results .s{font-size:10px;max-width:92px}
+  .grouphead{padding:12px 18px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;border-top:1px solid var(--line)}
+  #sortBtn{text-decoration:none!important;font-size:10px!important;letter-spacing:0;text-transform:none;border:1px solid var(--line);padding:4px 7px;border-radius:5px}
+  .listwrap{scrollbar-width:thin;scrollbar-color:#3b4d57 transparent;overscroll-behavior:contain}
+  .row{padding:9px 18px;gap:12px;min-height:44px;border-bottom:1px solid #ffffff06}
+  .row.v{background:#f0a52c06;box-shadow:inset 2px 0 var(--amber)}
+  .row .mark{position:relative;width:21px;height:21px;border-radius:6px;border-color:#4e636f}
+  .row .mark::after{content:'';position:absolute;inset:-6px}
+  .row .mark[data-s="on"]{border-color:var(--amber);background:#f0a52c20;color:var(--amber-hi)}
+  .row .nm{font-size:12px;min-height:26px;letter-spacing:.005em}
+  .row .ct{font-size:10px;color:var(--green);background:#4fdca413;border:1px solid #4fdca422;border-radius:5px;padding:2px 5px;min-width:21px;text-align:center}
+  .row .exp{width:26px;min-height:26px;color:var(--ink-60);font-size:13px}
+  .row.focused .nm{color:var(--amber-hi)}
+  .sub{padding:7px 18px 10px 51px;background:#0e161b}
+  .sub div{font-size:12px;min-height:32px;justify-content:space-between}
+  .sub .x{min-width:30px;min-height:30px;color:var(--ink-60)}
+  details.how summary{padding:14px 18px;font-size:11px}
+  details.how ul{font-size:12px;line-height:1.8;padding-left:33px;padding-right:18px}
+  footer{padding:12px 16px;gap:6px;background:#0e161b}
+  footer button{font-size:10px;padding:7px 8px;border-radius:6px;min-height:32px;background:transparent}
+  footer .save{width:100%;margin:3px 0 0;font-size:10px;color:var(--ink-60)}
+  footer .save::before{content:'●';font-size:7px;color:var(--green);margin-right:6px}
+  footer .save.warn::before{color:var(--amber)}
+  #gGlow path{opacity:.21}
+  .foil-line{stroke-width:.7}
+  .lbl{font-weight:550;letter-spacing:.035em}
+  @media(min-width:1400px){#app{padding:0 32px 28px;gap:0 24px;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:104px minmax(0,1fr)}}
+  @media(max-width:1100px){.map-context{display:none}.map-legend{gap:12px;font-size:10px}.zoomctl button{width:30px}.chrome.br{right:12px}}
+  @media(max-width:860px){
+    #app{padding:0 12px 12px;gap:12px;grid-template-columns:1fr;grid-template-rows:72px minmax(270px,42dvh) minmax(220px,1fr)}
+    header{padding:8px 2px;gap:9px}.brand-icon{width:34px;height:34px;border-radius:10px}.brand-icon svg{width:20px}
+    .brand-title h1{font-size:18px}.brand-title .tag{display:block;font-size:8px;letter-spacing:.12em;margin-top:3px}
+    header .score{gap:16px}.score .state-score{min-width:115px}.score .city-score{padding-left:16px}
+    header .score b{font-size:21px}header .score span{font-size:10px}
+    #stage{border-radius:12px}svg#map{top:54px;height:calc(100% - 108px)}
+    .chrome.tl{top:10px;left:10px;gap:6px}.pill{padding:3px}.pill button{min-height:32px;padding:7px 12px}
+    .chrome.br{top:auto;bottom:9px;right:10px}.zoomctl button:not(#zFit){display:block}
+    #zFit{font-size:11px!important;padding:7px!important}.map-legend{bottom:22px;left:14px;gap:12px}.map-legend .city-key{display:none}
+    .hint{bottom:58px;font-size:12px}.ledger-intro{display:none}aside{border-radius:12px;min-height:0}
+    .search{padding:12px 14px}.search label{display:none}.search input{font-size:16px;padding-top:10px;padding-bottom:10px}
+    #results{top:57px;left:14px;right:14px;max-height:220px}
+    .grouphead{padding:7px 14px}.row{padding:7px 14px;min-height:44px}.row .nm{font-size:13px}
+    details.how summary{padding:9px 14px}footer{padding:8px 12px}footer .save{width:auto;margin-left:auto;font-size:9px}
+  }
+  @media(max-width:430px){.score .city-score{display:none}.score .state-score{min-width:120px}header .score span{font-size:10px}.map-legend{gap:8px;font-size:9px}.zoomctl button{width:26px}footer .save{width:100%;margin:0}.brand-title h1{font-size:17px}}
+  @media(max-width:860px) and (max-height:700px){#app{grid-template-rows:64px minmax(180px,30dvh) minmax(210px,1fr);overflow:auto}}
+  @media(max-width:860px) and (orientation:landscape) and (min-width:600px){
+    #app{grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:64px minmax(0,1fr);overflow:hidden;gap:0 12px}
+    aside{min-height:0}.map-legend{display:none}.search input{font-size:13px}footer .save{width:100%;margin:0}
+    details.how{display:none}.chrome.tl{top:8px}.chrome.br{bottom:8px}
+  }
+  @media(max-height:650px) and (min-width:861px){.ledger-intro p{display:none}.ledger-intro{padding-top:14px}.search{padding-top:12px}.ledger-intro h2{font-size:18px}}
+
+
+  .list-filter{display:flex;gap:4px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .list-filter button{flex:1;font-size:11px;padding:7px 5px;border:1px solid transparent;border-radius:6px;color:var(--ink-60)}
+  .list-filter button:hover{background:var(--field)}
+  .list-filter button[aria-pressed="true"]{background:#f0a52c16;border-color:#f0a52c35;color:var(--amber-hi)}
+  .row .memory-button{width:28px;min-height:28px;color:var(--ink-60);font-size:14px;border-radius:5px;flex:none}
+  .row .memory-button.has-memory,.city-memory.has-memory{color:var(--green)}
+  .memory-button:hover,.city-memory:hover{background:var(--field);color:var(--green)}
+  .sub .city-row{display:flex;gap:6px;align-items:flex-start;padding:5px 0}
+  .city-text{min-width:0;flex:1;display:block!important;font-size:12px}
+  .city-text .memory-preview{display:block;color:var(--ink-60);font-size:10px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-line;margin-top:4px}
+  .city-memory{color:var(--ink-60);border-radius:5px;min-width:28px;min-height:30px;font-size:14px}
+  .row .nm{min-width:0}.state-memory{display:block;font-size:10px;font-weight:400;color:var(--ink-60);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:165px;margin-top:3px}
+  .empty-ledger{padding:24px 20px;color:var(--ink-60);font-size:12px;line-height:1.7}
+  #memoryDialog{color:var(--ink);background:var(--panel);border:1px solid #48615f;border-radius:16px;padding:24px;width:min(420px,calc(100% - 32px));max-height:85dvh;overflow:auto;box-shadow:0 20px 70px #0008}
+  #memoryDialog::backdrop{background:#061017aa;backdrop-filter:blur(3px)}
+  #memoryDialog h2{font-size:21px;margin:9px 0 22px;font-weight:550}
+  #memoryDialog label{display:block;font-size:12px;margin:16px 0 7px}
+  #memoryDialog label span{color:var(--ink-60);font-size:11px}
+  #memoryDialog input,#memoryDialog textarea{font:inherit;color:var(--ink);color-scheme:dark;display:block;width:100%;background:var(--paper);border:1px solid #41535e;border-radius:7px;padding:10px;font-size:14px}
+  #memoryDialog textarea{resize:vertical;min-height:90px}
+  #memoryDialog input:focus,#memoryDialog textarea:focus{outline:2px solid var(--green);outline-offset:1px}
+  .memory-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+  .memory-actions button{font-size:12px;padding:10px 16px;border:1px solid var(--line);border-radius:7px}
+  .memory-actions #memorySave{color:#101a17;background:var(--green);border-color:var(--green);font-weight:600}
+  .result-kind{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-60)}
+  @media(max-width:430px){footer button{font-size:9px;padding:6px}footer{gap:4px}}
+  @media(max-width:860px){.list-filter{padding:5px 12px}.list-filter button{padding:5px}.row .memory-button{width:28px}.sub{padding-left:47px}footer button{min-height:30px}}
+
+
+  .visit-period{display:grid;grid-template-columns:1fr 100px;gap:10px}
+  #memoryDialog select{font:inherit;color:var(--ink);color-scheme:dark;background:var(--paper);border:1px solid #41535e;border-radius:7px;padding:10px;font-size:14px;width:100%}
+  #memoryDialog select:focus{outline:2px solid var(--green);outline-offset:1px}
+  #memoryDialog input[type="file"]{font-size:11px;padding:8px}
+  .photo-help{font-size:10px;color:var(--ink-60);line-height:1.6;margin:7px 0 0}
+  #photoPreview{margin-top:12px}#photoPreview[hidden]{display:none}
+  #photoImage{display:block;max-width:100%;max-height:190px;object-fit:contain;border-radius:8px;background:var(--paper)}
+  #removePhoto{font-size:11px;color:var(--ink-60);padding:8px 0}
+  .memory-message{font-size:12px;line-height:1.5;min-height:18px;color:var(--amber-hi);margin:14px 0 0}
+  .visit-thumbnail{width:44px;height:36px;object-fit:cover;border-radius:5px;display:block;margin-top:6px;border:1px solid var(--line)}
+
+
+  #memoryHover{position:absolute;z-index:6;pointer-events:none;width:260px;max-width:calc(100% - 24px);padding:14px;background:#131b20f5;border:1px solid #4b645c;border-radius:12px;box-shadow:0 12px 38px #0007;overflow:hidden;backdrop-filter:blur(8px)}
+  #memoryHover[hidden]{display:none}
+  #memoryHover h3{font-size:14px;font-weight:600;letter-spacing:-.015em;line-height:1.4;margin:0 0 5px}
+  #memoryHover .hover-kind{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--green);margin-bottom:6px}
+  #memoryHover .hover-date{font-size:11px;color:var(--amber-hi);margin:6px 0}
+  #memoryHover .hover-note{font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);margin:9px 0 0}
+  #memoryHover .hover-help{font-size:10px;line-height:1.6;color:var(--ink-60);margin:8px 0 0}
+  #memoryHover img{display:block;width:100%;height:130px;object-fit:contain;background:var(--paper);border-radius:6px;margin-top:10px}
+
+
+  .household{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 0 12px;color:var(--ink-60);font-size:12px}
+  .household select,.household button,#access input,#access button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid #41535e;border-radius:8px;padding:10px;min-height:44px}
+  #access{position:fixed;inset:0;z-index:100;background:#0e1418;display:grid;place-items:center;padding:24px}
+  #access[hidden]{display:none}#access form{width:min(380px,100%)}#access input{display:block;width:100%;margin:12px 0;font-size:16px}#access button{background:var(--green);color:#0e1418;width:100%;font-weight:600}#access p{line-height:1.6;color:var(--ink-60)}
+  #accessMessage{color:var(--amber);min-height:24px}body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  @media(max-width:860px){button{touch-action:manipulation}#memoryDialog input,#memoryDialog textarea,#memoryDialog select{font-size:16px}}
+
+#app{grid-template-rows:94px 64px minmax(0,1fr)}
+.household{grid-column:1/-1;grid-row:2;align-self:center;padding:0;min-width:0}
+#stage{grid-column:1;grid-row:3}aside{grid-column:2;grid-row:3}
+@media(max-width:860px){#app{height:auto;min-height:100dvh;grid-template-columns:1fr;grid-template-rows:72px 56px minmax(270px,42dvh) minmax(340px,1fr)}.household span{display:none}.household{gap:6px;font-size:11px}.household button,.household select{padding:8px}.household label{margin-right:auto}#stage{grid-column:1;grid-row:3}aside{grid-column:1;grid-row:4;max-height:65dvh}}
+@media(max-width:860px) and (orientation:landscape) and (min-width:600px){#app{height:100dvh;grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:64px 52px minmax(0,1fr)}aside{grid-column:2;grid-row:3;max-height:none}}
+
+/* Lantern-lit pixel world: keep the geographic workspace clear and legible. */
+:root{--paper:#090b19;--land:#222539;--foil:#34344c;--panel:#111426;--field:#1b1d34;--line:#34324d;--ink:#f2eade;--ink-60:#b4adc6;--amber:#ffb34f;--amber-hi:#ffd393;--amber-edge:#865629;--green:#56d9c0;--violet:#bca0ed}
+body{background:radial-gradient(ellipse at 95% 0%,#31134555,transparent 45%),radial-gradient(ellipse at 0% 90%,#173c4455,transparent 45%),#090b19}
+.brand-title h1{letter-spacing:.015em;color:#fff1d6}.brand-icon{color:var(--amber);border-radius:6px;box-shadow:0 0 25px #ffac3c15;background:#211a28}
+.brand-title .tag,.eyebrow,.map-context b,.companions-caption{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+#stage{border:1px solid #574264;border-radius:8px;background:radial-gradient(ellipse at 85% 80%,#17444844,transparent 45%),radial-gradient(ellipse at 70% 0%,#4a205944,transparent 55%),#101326;box-shadow:inset 0 1px #8b699025,0 14px 35px #0004}
+#stage::before{background-image:linear-gradient(#8d6da606 1px,transparent 1px),linear-gradient(90deg,#8d6da606 1px,transparent 1px);background-size:8px 8px;opacity:.6}
+aside{border-color:#574264;border-radius:8px;background:linear-gradient(140deg,#1c1831,#111426 60%);box-shadow:inset 0 1px #8b699025,0 14px 35px #0004}
+.ledger-intro{background:linear-gradient(120deg,#4a20592b,#11142600)}.ledger-intro h2{color:#ffebc8}
+button,.household select,.search input{border-radius:5px!important}.household button,.household select,.mode-toggle,.zoomctl{border-color:#695074!important;box-shadow:2px 2px 0 #0007}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #84e9d2;outline-offset:3px}
+.row.v{background:#ffad3c08}.row:hover,.row.focused{background:#51396332}.mode button.active{background:#ffa63c1c;color:#ffd393;border-color:#ad763b}.map-legend{max-width:calc(100% - 220px);flex-wrap:wrap;row-gap:5px}
+.travel-companions{position:absolute;right:28px;top:72px;width:175px;height:82px;object-fit:contain;image-rendering:pixelated;pointer-events:none;z-index:1;filter:drop-shadow(0 5px 0 #05061366)}
+.companions-caption{position:absolute;right:26px;top:159px;font-size:9px;letter-spacing:.02em;color:#c2a8c5;pointer-events:none}
+svg#map{z-index:2}.map-context{z-index:3}
+.map-legend .shared-key{display:none}.view-both .map-legend .shared-key{display:inline-flex}.view-both .map-legend .personal-key{display:none}
+.map-legend .key-alex{background:var(--amber)}.map-legend .key-sam{background:var(--violet)}.map-legend .key-both{background:var(--green)}
+.st.on.owner-sam{fill:var(--violet);stroke:#77638e}.st.on.owner-both{fill:var(--green);stroke:#357a71}.st.on.owner-sam:hover{fill:#d1baf7}.st.on.owner-both:hover{fill:#8ae7d5}
+.cd.on.owner-alex{fill:var(--amber)}.cd.on.owner-sam{fill:var(--violet)}.cd.on.owner-both{fill:var(--green)}
+.owner-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}.owner-badge{display:inline-block;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;padding:3px 5px;border:1px solid #a66e393d;color:var(--amber);background:#ffad3c09;border-radius:3px}.owner-badge.sam{border-color:#aa80da50;color:#cbb0f2;background:#a980d809}
+.view-both .mark{cursor:pointer}.view-both .mark:disabled{cursor:default;opacity:.4}
+#bothMemoryDialog{color:var(--ink);background:linear-gradient(145deg,#21182f,#101526);border:1px solid #765983;border-radius:8px;padding:24px;width:min(490px,calc(100% - 32px));max-height:85dvh;overflow:auto;box-shadow:4px 4px 0 #0006,0 20px 70px #0008}
+#bothMemoryDialog::backdrop{background:#050614bb;backdrop-filter:blur(3px)}#bothMemoryDialog h2{margin:10px 0 22px}#bothMemoryDialog h3{margin:0 0 12px;font-size:16px}.shared-memory{border:1px solid #554360;padding:16px;margin:12px 0;border-radius:5px}.shared-memory p{font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}.shared-memory img{width:100%;max-height:240px;object-fit:contain;border-radius:4px}.added-credit{color:var(--ink-60);font-size:11px!important}.combined-help{font-size:12px;color:var(--ink-60)}#bothMemoryClose{background:#2c2541;border:1px solid #80668b;padding:10px 14px;min-height:44px}
+#memoryDialog{background:linear-gradient(140deg,#251c36,#111426);border-color:#765983;border-radius:8px}#memoryDialog .eyebrow{color:var(--amber)}
+@media(max-width:1100px){.travel-companions{width:128px;height:65px;right:20px;top:64px}.companions-caption{display:none}}
+@media(max-width:860px){.travel-companions{width:105px;height:52px;top:auto;bottom:61px;right:15px;opacity:.9}.map-legend{max-width:calc(100% - 20px);font-size:9px;bottom:14px}.view-both .map-legend .city-key{display:none}.view-both .map-legend{max-width:calc(100% - 165px);font-size:8px;gap:7px}.household label{font-size:11px}}
+
+
+/* One map and a compact account toolbar. Companions live in the chrome. */
+#app{grid-template-rows:94px minmax(0,1fr)}#stage{grid-row:2}aside{grid-row:2}
+.account-tools{display:flex;gap:8px;margin-left:16px}.account-tools button{display:flex;align-items:center;gap:7px;border:1px solid #695074;background:#19162a;padding:9px 12px;min-height:40px;font-size:12px;color:#d2c8df}.account-tools button:hover{background:#302440}.account-tools button span[aria-hidden]{font-size:18px}
+.brand-icon{position:relative;overflow:visible;background:none;border:none;box-shadow:none;width:42px;height:50px}.brand-icon svg{display:none}
+.ledger-intro{position:relative;padding-right:65px}.ledger-intro .companion-panda{position:absolute;right:15px;top:20px;width:45px}
+footer{position:relative;padding-right:42px!important}footer .companion-sprout{position:absolute;right:3px;bottom:6px;width:38px;height:43px;background-size:110px 60px;background-position:-37px -9px}
+#sharedDetails{padding:10px 14px;background:#30224044;border:1px solid #554360;border-radius:5px;margin:14px 0}.apply-both{display:flex!important;align-items:center;gap:8px;font-size:12px!important;line-height:1.5}#memoryDialog .apply-both input{width:18px;min-height:18px;padding:0;flex:none;accent-color:var(--green)}
+#memoryDialog{width:min(480px,calc(100% - 32px))}#backupDialog{color:var(--ink);background:var(--panel);border:1px solid #765983;padding:24px;border-radius:8px;width:min(420px,calc(100% - 32px))}#backupDialog::backdrop{background:#050614bb}#backupDialog p{font-size:13px;line-height:1.6}#backupDialog select{display:block;width:100%;padding:10px;background:var(--field);color:var(--ink);margin-top:12px}
+@media(max-width:1100px){.brand-title .tag{font-size:9px}.account-tools{margin-left:4px;gap:5px}.account-tools button{padding:8px}.score{gap:12px!important}}
+@media(max-width:860px){#app{grid-template-rows:74px minmax(270px,42dvh) minmax(340px,1fr)}#stage{grid-row:2}aside{grid-row:3}.account-tools{margin-left:auto}.account-tools .tool-text{display:none}.account-tools button{font-size:10px;padding:7px;min-height:36px}.brand-title .tag{display:none}.brand-title h1{font-size:16px}.brand-icon{width:28px;height:42px}.brand-icon .companion{transform:scale(.72);transform-origin:left center}.score .state-score{min-width:70px!important}.score .state-score b{font-size:19px}.score .state-score span{font-size:8px}.score .city-score{display:none}header{gap:6px}footer .companion-sprout{opacity:.85}}
+@media(max-width:860px) and (orientation:landscape) and (min-width:600px){#app{grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:64px minmax(0,1fr)}aside{grid-column:2;grid-row:2}}
+
+.map-legend .city-key{display:none}footer .companion-sprout{clip-path:polygon(0 0,100% 0,100% 56%,80% 66%,80% 100%,0 100%)}
+.reveal.owner-sam{fill:var(--violet);stroke:#77638e}.reveal.owner-both{fill:var(--green);stroke:#357a71}
+
+.year-control{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}.year-control label{font-size:12px;color:var(--ink-60)}.year-control select{padding:7px 10px;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:5px}.year-control p{width:100%;margin:0;font-size:10px;color:var(--ink-60)}
+.sync-line{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:11px;min-height:18px;color:var(--green)}#syncBadge[data-state="saving"]{color:var(--amber-hi)}#syncBadge[data-state="error"]{color:#ffb34f}#retrySync{padding:2px 6px;border:1px solid #f0a52c60;border-radius:4px;color:var(--amber-hi);font-size:10px}.together-filter{display:flex;align-items:center;gap:6px;white-space:nowrap}.together-filter input{accent-color:var(--green);width:16px;height:16px}.city-text .memory-preview{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.state-memory{max-width:100%}@media(max-width:860px){.sync-line{font-size:9px;gap:4px}.brand-title{min-width:0}.brand-title h1{white-space:nowrap}.sync-line button{font-size:9px}}
+header{position:relative}.options-wrap{position:relative;flex:none}#optionsToggle{width:38px;height:38px;min-height:38px;padding:0;border:1px solid #80668b;border-radius:5px;font-size:24px;color:var(--ink);background:#211a30}#mapOptions{position:absolute;right:0;top:calc(100% + 8px);width:180px;padding:6px;background:#191628;border:1px solid #80668b;border-radius:8px;box-shadow:0 12px 35px #0008;z-index:30}#mapOptions[hidden]{display:none}#mapOptions button{display:block;width:100%;text-align:left;padding:11px 12px;min-height:42px;border:0;border-radius:4px;font-size:13px;color:var(--ink)}#mapOptions button:hover{background:#35283f}#mapOptions button:disabled{opacity:.4}#mapOptions .danger{color:#f5a7a7;border-top:1px solid var(--line);margin-top:4px}.options-wrap button:focus-visible{outline:2px solid var(--amber-hi);outline-offset:2px}@media(max-width:860px){#optionsToggle{width:30px;height:36px;min-height:36px}.account-tools{gap:4px}.account-tools button{padding:6px}.score .state-score{min-width:57px!important}.brand-title h1{font-size:14px}}
+.year-control{display:flex;flex-direction:column;align-items:stretch;gap:10px}.filter-row{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:10px}.filter-row select{width:100%;min-width:0}.filter-row label{margin:0}
+#clearDialog{margin:auto;width:min(420px,calc(100vw - 32px));padding:24px;background:#191628;color:var(--ink);border:1px solid #80668b;border-radius:12px;box-shadow:0 20px 80px #0008}#clearDialog::backdrop{background:#050614bb;backdrop-filter:blur(3px)}#clearDialog h2{margin:0 0 14px;font-size:22px}#clearDialog p{color:var(--ink-60);font-size:13px;line-height:1.7}#clearConfirm{color:#ffd7d7;background:#73343f;border:1px solid #a45e68}#clearMessage:empty{display:none}
+#helpDialog{margin:auto;width:min(500px,calc(100vw - 32px));max-height:calc(100dvh - 48px);overflow:auto;padding:24px;background:#191628;color:var(--ink);border:1px solid #80668b;border-radius:12px;box-shadow:0 20px 80px #0008}#helpDialog::backdrop{background:#050614bb;backdrop-filter:blur(3px)}#helpDialog h2{margin:0 0 14px;font-size:22px}#helpDialog ul{padding-left:20px}#helpDialog li,#helpDialog p{font-size:13px;line-height:1.7;color:var(--ink-60);margin-bottom:9px}
+/* Individual images use their full bounds, never sprite windows. */
+.companion{display:block;background:none;width:44px;height:52px;object-fit:contain;object-position:center;clip-path:none;transform:none;image-rendering:pixelated;flex:none;pointer-events:none}
+.brand-icon{width:60px;height:70px}.brand-icon .companion{width:60px;height:70px;transform:none}
+.ledger-intro{padding-right:24px}.grouphead .character-panda{width:54px;height:56px;margin:-10px 8px -10px 0}
+footer{padding-right:16px!important}
+@media(max-width:860px){.brand-icon{width:42px;height:56px}.brand-icon .companion{width:42px;height:56px;transform:none}.grouphead .character-panda{width:46px;height:48px;margin:-8px 6px -8px 0}}
+</style>
+</head>
+<body>
+<section id="access" hidden></section>
+<div id="app" inert>
+  <header>
+    <div class="brand-icon" aria-hidden="true"><img class="companion character-penguin" src="penguin-traveler.png" alt="" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Z"/><path d="M9 3v16M15 5v16"/><circle cx="15" cy="10" r="2.5" fill="#131b20"/></svg></div>
+    <div class="brand-title"><h1>Our travels</h1><span class="tag">Alex &amp; Sam · Your first-visit travel journal</span><div class="sync-line"><span id="syncBadge" role="status" aria-live="polite">Loading…</span><button id="retrySync" hidden type="button">Retry</button></div></div>
+    <div class="score">
+      <div class="state-score"><b class="num" id="nStates">0</b><span> / 50 states + DC</span>
+        <i class="meter"><u id="meterFill"></u></i></div>
+      <div class="city-score"><b class="num" id="nCities">0</b><span>cities visited</span></div>
+    </div>
+    <nav class="account-tools" aria-label="Map account"><button id="reloadCloud" title="Refresh shared map"><span aria-hidden="true">↻</span><span class="tool-text">Refresh</span></button><button id="signOut" title="Sign out" hidden style="display:none">Sign out</button></nav>
+<div class="options-wrap"><button id="optionsToggle" type="button" aria-label="Map options" title="Map options" aria-expanded="false" aria-controls="mapOptions">⋯</button><div id="mapOptions" hidden aria-label="Map options">      <button id="bUndo" disabled title="Undo last change (Ctrl/⌘ Z)">Undo</button>
+      <button id="bImage">Save image</button>
+      <button id="bExport" title="Export a JSON backup of marks and memories">Export</button>
+      <button id="bImport" title="Import a JSON backup">Import</button>
+      <button id="bHelp" type="button">How it works</button>
+      <button id="bReset" class="danger">Clear all</button>
+</div></div>
+  </header>
+
+  <div id="stage">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Interactive United States travel map. Use the state list and city search for keyboard controls."></svg>
+    <div class="map-context"><b id="viewName">The whole country</b><span id="viewHelp">Click a state to scratch it open</span></div>
+
+    <div class="chrome tl">
+      <div class="pill" role="group" aria-label="View">
+        <button id="mState" aria-pressed="true">States</button>
+        <button id="mCity" aria-pressed="false">Cities</button>
+      </div>
+      <div class="pill">
+        <button id="bSound" aria-pressed="true" title="Turn sound off">
+          <svg class="ico" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+            <path d="M7 2.5 3.8 5.4H1.6v5.2h2.2L7 13.5z" fill="currentColor"/>
+            <g class="waves" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+              <path d="M9.6 5.6a3.4 3.4 0 0 1 0 4.8"/><path d="M11.8 3.6a6.4 6.4 0 0 1 0 8.8"/>
+            </g>
+            <g class="mute" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+              <path d="M10 6 L14 10"/><path d="M14 6 L10 10"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="chrome br">
+      <div class="legend">
+        <div><i class="sw-on"></i>Been there</div>
+        <div><i class="sw-off"></i>Not yet</div>
+        <div><i class="sw-city"></i>A city you've been to</div>
+      </div>
+      <div class="pill zoomctl">
+        <button id="zIn" title="Zoom in">+</button>
+        <button id="zOut" title="Zoom out">−</button>
+        <button id="zFit" style="width:auto;padding:7px 11px;font-size:13px">Whole map</button>
+      </div>
+    </div>
+
+    <div class="map-legend" aria-label="Map legend"><span class="personal-key"><i class="sw-on"></i>Visited</span><span class="shared-key"><i class="key-alex"></i>Alex</span><span class="shared-key"><i class="key-sam"></i>Sam</span><span class="shared-key"><i class="key-both"></i>Both</span><span><i class="sw-off"></i>Still to explore</span><span class="city-key"><i class="sw-city"></i>City visited</span></div>
+    
+    <div id="memoryHover" role="tooltip" aria-hidden="true" hidden></div>
+    <div class="hint" id="hint" role="status" aria-live="polite"></div>
+  </div>
+
+  <aside aria-label="Travel journal">
+    <div class="ledger-intro"><span class="eyebrow">Your travels, uncovered</span><h2>A little more of America.</h2><p id="journalNote">Start with somewhere you have been.<br>Every city opens up another part of the map.</p></div>
+    <div class="search">
+      <label for="q">Add a state or city to your map</label>
+      <div class="search-field"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="q" placeholder="Find a state or city…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="results"></div>
+      <div id="results" role="listbox" aria-label="Matching states and cities"></div>
+    </div>
+    <div class="year-control"><div class="filter-row"><label for="yearFilter">First-visit year</label><select id="yearFilter"><option value="all">All years</option></select></div><div class="filter-row"><label for="travelerFilter">Traveler</label><select id="travelerFilter"><option value="all">All travelers</option><option>Alex</option><option>Sam</option><option>Both</option></select></div><p>First visits only · saved in this browser, not shared online.</p></div>
+    <div class="grouphead">
+      <span id="listTitle">All states</span>
+      <span class="sp"></span>
+      <img class="companion character-panda" src="panda.png" alt="" aria-hidden="true">
+      <button id="sortBtn" style="color:inherit;font-size:12px;text-decoration:underline">by name</button>
+    </div>
+    <div class="list-filter" role="group" aria-label="Filter states">
+      <button data-filter="all" aria-pressed="true">All</button><button data-filter="visited" aria-pressed="false">Visited</button><button data-filter="unvisited" aria-pressed="false">Unvisited</button>
+    </div>
+    <div class="listwrap"><div id="list"></div></div>
+
+    <footer>
+      <span class="save" id="saveState" >Saved on this device</span>
+      <input type="file" id="fileIn" accept="application/json" style="display:none">
+    </footer>
+  </aside>
+</div>
+<dialog id="bothMemoryDialog" aria-labelledby="bothMemoryTitle"><div class="eyebrow">Our shared travels</div><h2 id="bothMemoryTitle"></h2><div id="bothMemoryContent"></div><p class="combined-help">Choose who visited when editing a place.</p><button type="button" id="bothMemoryClose">Back to the map</button></dialog>
+<dialog id="helpDialog" aria-labelledby="helpTitle"><h2 id="helpTitle">How it works</h2><ul>
+        <li>Click a state to choose who visited, or edit an existing visit.</li>
+        <li>Switch to <b>Cities</b> to mark individual cities. A state with any marked city counts as visited.</li>
+        <li>Scroll or pinch to zoom, drag to pan. Smaller cities appear as you zoom in.</li>
+        <li>Search opens visit details without changing your map view. Use a state name or abbreviation, or “city, state”.</li>
+        <li>Use ✎ beside a visited state or city to save when you first visited, a memory and a photo. Hover the state or city dot on the map to preview them.</li>
+        <li>Undo restores your last change. Save image exports your current map view as a PNG.</li>
+        <li>One shared map shows Alex in amber, Sam in violet and both in teal. Choose who visited when saving a place. This public edition saves visits only in this browser. It does not upload or share your travel data. Export a backup before switching devices or clearing browser data.</li>
+      </ul><p>Year and traveler filters only change what you see. This map records first visits, not repeat trips.</p><div class="memory-actions"><button id="helpClose" type="button">Got it</button></div></dialog>
+<dialog id="clearDialog" aria-labelledby="clearTitle"><h2 id="clearTitle">Clear the whole map?</h2><p>This removes both travelers’ visited places, dates, memories and photos, including places hidden by filters. You can undo this while this page stays open.</p><p id="clearMessage" role="status"></p><div class="memory-actions"><button id="clearCancel" type="button">Cancel</button><button id="clearConfirm" type="button" class="danger">Clear map</button></div></dialog>
+<dialog id="backupDialog"><h2>Import travel backup</h2><p>This replaces the selected saved visits and memories. Undo can restore the previous map.</p><label for="backupTarget">Assign this older backup to</label><select id="backupTarget"><option>Alex</option><option>Sam</option><option>Both</option></select><div class="memory-actions"><button id="backupCancel">Cancel</button><button id="backupConfirm">Import backup</button></div></dialog>
+<dialog id="memoryDialog" aria-labelledby="memoryTitle">
+  <form id="memoryForm" novalidate>
+    <div class="eyebrow">A memory from your travels</div><h2 id="memoryTitle">Visit details</h2>
+    <label for="visitWho">Who visited?</label><select id="visitWho"><option value="none">Remove visit</option><option>Alex</option><option>Sam</option><option>Both</option></select>
+    <p id="entryCredit" class="added-credit"></p>
+    <p id="rollupHelp" class="photo-help" hidden>City visits also count toward this state. Remove its city visits to clear the state completely.</p>
+    <div id="sharedDetails" style="display:none"><label for="memoryWho">Details for</label><select id="memoryWho"><option>Alex</option><option>Sam</option></select><label class="apply-both"><input id="applyBoth" type="checkbox"> Use these details for both of us</label></div>
+    <div id="memoryFields">
+    <label for="visitMonth">First visited <span>(month and year · optional)</span></label>
+    <div class="visit-period"><select id="visitMonth" aria-label="First visit month"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select><input id="visitYear" type="number" min="1" max="9999" step="1" inputmode="numeric" placeholder="Year" aria-label="First visit year"></div>
+    <label for="visitNote">Travel memory <span>(optional)</span></label><textarea id="visitNote" rows="4" maxlength="2000" placeholder="A favorite moment, who you traveled with…"></textarea>
+    <label for="visitPhoto">Photo <span>(optional · one per state or city)</span></label>
+    <input type="file" id="visitPhoto" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp">
+    <p class="photo-help">Photos are resized for the map and included in your exported backup.</p>
+    <div id="photoPreview" hidden><img id="photoImage" alt="Photo attached to this visit"><button id="removePhoto" type="button">Remove photo</button></div>
+    </div>
+    <p id="memoryMessage" class="memory-message" role="status" aria-live="polite"></p>
+    <div class="memory-actions"><button type="button" id="memoryCancel">Cancel</button><button type="button" id="memorySave">Save visit</button></div>
+  </form>
+</dialog>
+
+<!-- Map geometry + 29,600 cities. Large generated data file: no need to read or edit it. -->
+<script src="cloud.js"></script><script src="map-data.js"></script>
+
+<script>
+const D = window.MAP_DATA;
+
+/* ---------------- data ---------------- */
+const STATES = D.states, SMAP = {};
+STATES.forEach(s => SMAP[s.c] = s);
+const LABEL_FIX = {MI:[634,152], FL:[712,441], LA:[561,398], VA:[742,246], ID:[248,110], AK:[150,455]};
+
+// right-hand label column for states too small to letter in place
+const SIDE = ['VT','NH','MA','RI','CT','NJ','DE','MD','DC'];
+const SIDE_X = 884, SIDE_Y0 = 104, SIDE_STEP = 21;
+
+const CN = [], CLOW = [], CST = [], CX = [], CY = [], CT = [];
+for (const st in D.cities) {
+  const chunk = D.cities[st];
+  if (!chunk) continue;
+  for (const item of chunk.split('|')) {
+    const i = item.indexOf('~');
+    const nm = item.slice(0, i), r = item.slice(i + 1);
+    CN.push(nm); CLOW.push(nm.toLowerCase()); CST.push(st);
+    CX.push(parseInt(r.slice(0,3),36)/D.sc - D.offx);
+    CY.push(parseInt(r.slice(3,6),36)/D.sc - D.offy);
+    CT.push(+r[6]);
+  }
+}
+const NCITY = CN.length;
+const IDX = {};                             // "ST|lowername" -> index
+for (let i = 0; i < NCITY; i++) IDX[CST[i] + '|' + CLOW[i]] = i;
+
+/* ---------------- state of the world ---------------- */
+let marked = new Set();        // explicitly marked states
+let visited = new Set();       // "ST|lowername" for listed cities
+let mode = 'state', focusSt = null, sortBy = 'name';
+let expanded = new Set();
+let selectedYear = 'all', travelerFilter = 'all', displayJournals = null;
+let listFilter = 'all', memories = Object.create(null);
+const undoStack = [];
+let effectGeneration = 0;
+
+const cityCount = {};          // ST -> number of marked places
+function recount() {
+  for (const k in cityCount) delete cityCount[k];
+  visited.forEach(k => { const s = k.slice(0, k.indexOf('|')); cityCount[s] = (cityCount[s]||0) + 1; });
+}
+const isOn = c => marked.has(c) || cityCount[c] > 0;
+const totalPlaces = () => visited.size;
+const totalStates = () => STATES.filter(s => isOn(s.c)).length;
+
+/* ---------------- svg scaffold ---------------- */
+const VB = {x:15, y:0, w:920, h:512};
+const svg = document.getElementById('map');
+svg.setAttribute('viewBox', `${VB.x} ${VB.y} ${VB.w} ${VB.h}`);
+svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+let paths = '';
+STATES.forEach(s => { paths += `<path class="st" id="p-${s.c}" data-c="${s.c}" d="${s.d}"><title>${s.n}</title></path>`; });
+let outlines = '';
+STATES.forEach(s => { outlines += `<path class="outline" d="${s.d}"/>`; });
+
+svg.innerHTML =
+  `<defs>
+     <filter id="lift" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+       <feDropShadow id="liftDrop" dx="0" dy="1.6" stdDeviation="2.4" flood-color="#16232b" flood-opacity="0.28"/>
+     </filter>
+     <filter id="glow" x="-12%" y="-12%" width="124%" height="124%">
+       <feGaussianBlur id="glowBlur" stdDeviation="7"/>
+     </filter>
+     <pattern id="foil" width="7" height="7" patternUnits="userSpaceOnUse">
+       <rect class="foil-bg" width="7" height="7"/>
+       <path class="foil-line" d="M-1 6 L6 -1 M1 8 L8 1"/>
+     </pattern>
+     <pattern id="foilHi" width="7" height="7" patternUnits="userSpaceOnUse">
+       <rect class="foil-bg-hi" width="7" height="7"/>
+       <path class="foil-line" d="M-1 6 L6 -1 M1 8 L8 1"/>
+     </pattern>
+   </defs>
+   <g id="scene">
+     <g id="gGlow" filter="url(#glow)"></g>
+     <g id="gStates" filter="url(#lift)">${paths}</g>
+     <g id="gFx"></g>
+     <g id="gOutline">${outlines}</g>
+     <g id="gLabels"></g>
+     <g id="gCities"></g>
+   </g>`;
+
+const scene = svg.querySelector('#scene');
+const gCities = svg.querySelector('#gCities');
+const gStates = svg.querySelector('#gStates');
+const liftDrop = svg.querySelector('#liftDrop');
+const gLabels = svg.querySelector('#gLabels');
+const gFx = svg.querySelector('#gFx');
+const gGlow = svg.querySelector('#gGlow');
+const glowBlur = svg.querySelector('#glowBlur');
+const foils = [svg.querySelector('#foil'), svg.querySelector('#foilHi')];
+const NS = 'http://www.w3.org/2000/svg';
+
+/* labels ------------------------------------------------ */
+let labelHtml = '';
+STATES.forEach(s => {
+  if (SIDE.includes(s.c)) return;
+  const fix = LABEL_FIX[s.c];
+  const x = fix ? fix[0] : s.lx, y = fix ? fix[1] : s.ly;
+  labelHtml += `<text class="lbl" data-lc="${s.c}" x="${x}" y="${y + 4}">${s.c}</text>`;
+});
+SIDE.forEach((c, i) => {
+  const s = SMAP[c], y = SIDE_Y0 + i * SIDE_STEP;
+  const sx = c === 'DC' ? s.lx : s.bb[2], sy = c === 'DC' ? s.ly : s.ly;
+  labelHtml += `<path class="lead" d="M${sx} ${sy}L${SIDE_X - 6} ${y - 4}"/>` +
+               `<text class="lbl side" data-lc="${c}" x="${SIDE_X}" y="${y}">${c}</text>`;
+});
+gLabels.innerHTML = labelHtml;
+
+/* ---------------- transform / zoom ---------------- */
+let k = 1, tx = 0, ty = 0;
+const KMIN = 0.9, KMAX = 70;
+
+function applyTransform() {
+  hideMemoryHover();
+  scene.setAttribute('transform', `translate(${tx} ${ty}) scale(${k})`);
+  // the drop shadow lives inside the zoomed group, so undo the scale on it,
+  // and drop it entirely once the coastline is off screen anyway
+  if (k > 3.2) gStates.removeAttribute('filter');
+  else {
+    gStates.setAttribute('filter', 'url(#lift)');
+    liftDrop.setAttribute('dy', 1.6/k);
+    liftDrop.setAttribute('stdDeviation', 2.4/k);
+  }
+  // the foil grain sits inside the zoomed group, so cancel the zoom on it
+  const grain = `scale(${1/k})`;
+  foils.forEach(f => f.setAttribute('patternTransform', grain));
+  if (k > 3.2) gGlow.removeAttribute('filter');
+  else { gGlow.setAttribute('filter', 'url(#glow)'); glowBlur.setAttribute('stdDeviation', 7/k); }
+  gLabels.style.display = (k > 2.2 || pxPerUnit() < 0.62) ? 'none' : '';
+  const ls = 11 / k;
+  gLabels.querySelectorAll('text').forEach(t => { t.style.fontSize = ls + 'px'; t.style.strokeWidth = (3/k) + 'px'; });
+  drawCities();
+}
+function setView(nk, nx, ny) {
+  k = Math.max(KMIN, Math.min(KMAX, nk)); tx = nx; ty = ny; applyTransform();
+}
+function fitTo(bb, pad = 26, animate = true) {
+  const w = Math.max(bb[2] - bb[0], 6), h = Math.max(bb[3] - bb[1], 6);
+  const nk = Math.max(KMIN, Math.min(KMAX, Math.min((VB.w - pad*2)/w, (VB.h - pad*2)/h)));
+  const cx = (bb[0] + bb[2])/2, cy = (bb[1] + bb[3])/2;
+  const nx = VB.x + VB.w/2 - nk*cx, ny = VB.y + VB.h/2 - nk*cy;
+  animate ? animateTo(nk, nx, ny) : setView(nk, nx, ny);
+}
+let anim = null;
+function stopAnimation() { if (anim !== null) cancelAnimationFrame(anim); anim = null; }
+function animateTo(nk, nx, ny) {
+  stopAnimation();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return setView(nk, nx, ny);
+  const k0 = k, x0 = tx, y0 = ty, t0 = performance.now(), dur = 480;
+  (function step(t) {
+    const u = Math.min(1, (t - t0)/dur), e = u < .5 ? 4*u*u*u : 1 - Math.pow(-2*u + 2, 3)/2;
+    setView(k0 + (nk - k0)*e, x0 + (nx - x0)*e, y0 + (ny - y0)*e);
+    if (u < 1) anim = requestAnimationFrame(step); else anim = null;
+  })(t0);
+}
+const fitAll = (a) => fitTo([26, 8, 900, 500], 10, a);
+
+function toVB(cx, cy) {
+  const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+const toMap = (cx, cy) => { const v = toVB(cx, cy); return {x:(v.x - tx)/k, y:(v.y - ty)/k}; };
+function zoomAt(cx, cy, factor) {
+  stopAnimation();
+  const v = toVB(cx, cy), m = {x:(v.x - tx)/k, y:(v.y - ty)/k};
+  const nk = Math.max(KMIN, Math.min(KMAX, k*factor));
+  setView(nk, v.x - nk*m.x, v.y - nk*m.y);
+}
+
+/* ---------------- city layer ---------------- */
+let RENDERED = [];                                 // x, y, id triples for click picking
+let visIdx = [];                                   // indices of marked listed cities
+function rebuildVisIdx() {
+  visIdx = [];
+  visited.forEach(key => { const i = IDX[key]; if (i !== undefined) visIdx.push(i); });
+}
+let LAST_SC = 1;
+function pxPerUnit() {
+  const r = svg.getBoundingClientRect();
+  return Math.min(r.width / VB.w, r.height / VB.h) || 1;
+}
+
+/* Draws dots and names with greedy decluttering: marked places first, then big
+   cities, then everything else, each accepted only if it clears what's already
+   on the map. Keeps the plate readable at every zoom. */
+function drawCities() {
+  const showAll = mode === 'city';
+  const x0 = (VB.x - tx)/k, y0 = (VB.y - ty)/k;
+  const x1 = (VB.x + VB.w - tx)/k, y1 = (VB.y + VB.h - ty)/k;
+  const sc = k * pxPerUnit();                       // screen px per map unit
+  LAST_SC = sc;
+  const r = 2.3/sc, rOn = 3.9/sc;                   // dot radii, fixed on screen
+  const fs = 9.5/sc;
+  const minDot = (k < 2 ? 26 : k < 4 ? 20 : 15) / sc;
+  const maxTier = k < 1.6 ? 0 : k < 2.8 ? 1 : 2;
+  const nameZoom = k >= 2.8;
+  const CAP = 600;
+
+  const cell = minDot, grid = new Map();
+  function clear(x, y) {
+    const gx = Math.floor(x/cell), gy = Math.floor(y/cell);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const a = grid.get((gx+i) + ',' + (gy+j));
+      if (a) for (let n = 0; n < a.length; n += 2) {
+        const dx = a[n] - x, dy = a[n+1] - y;
+        if (dx*dx + dy*dy < minDot*minDot) return false;
+      }
+    }
+    return true;
+  }
+  function occupy(x, y) {
+    const kk = Math.floor(x/cell) + ',' + Math.floor(y/cell);
+    let a = grid.get(kk); if (!a) grid.set(kk, a = []);
+    a.push(x, y);
+  }
+  const boxes = [];
+  function placeLabel(x, y, lift, text) {
+    const w = text.length * fs * 0.55, h = fs * 1.15;
+    const b = [x - w/2, y - lift - h, x + w/2, y - lift + h*0.1];
+    for (const o of boxes) if (b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) return false;
+    boxes.push(b); return true;
+  }
+
+  let dots = '', names = '', n = 0;
+  RENDERED = [];
+  const inView = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+
+  const add = (x, y, on, id, label, force, rev) => {
+    if (!force && !clear(x, y)) return;
+    occupy(x, y);
+    const rr = on ? rOn : r;
+    dots += `<circle class="cd ${on ? 'on' : 'off'}${rev ? ' rev' : ''}${isBoth()&&on?' '+ownerClass(CST[id]+'|'+CLOW[id]):''}" data-i="${id}" cx="${x}" cy="${y}" r="${rr}"/>`;
+    boxes.push([x - rr, y - rr, x + rr, y + rr]);   // names never sit on a dot
+    RENDERED.push(x, y, id);
+    if ((on || nameZoom) && placeLabel(x, y, rr + 2.5/sc, label))
+      names += `<text class="cl ${on ? 'on' : ''}${rev ? ' rev' : ''}" x="${x}" y="${y - rr - 2.5/sc}" style="font-size:${fs}px;stroke-width:${2.6/sc}px">${esc(label)}</text>`;
+    n++;
+  };
+
+  // 1. cities already marked — never suppressed
+  for (const i of visIdx) if (inView(CX[i], CY[i])) add(CX[i], CY[i], true, i, CN[i], true, isOn(CST[i]));
+
+  // 2. the rest, biggest first
+  if (showAll) {
+    for (let tier = 0; tier <= maxTier && n < CAP; tier++) {
+      for (let i = 0; i < NCITY; i++) {
+        if (CT[i] !== tier) continue;
+        const x = CX[i], y = CY[i];
+        if (!inView(x, y)) continue;
+        if (visited.has(CST[i] + '|' + CLOW[i])) continue;
+        add(x, y, false, i, CN[i], false, isOn(CST[i]));
+        if (n >= CAP) break;
+      }
+    }
+  }
+  gCities.innerHTML = dots + names;
+  gCities.style.pointerEvents = showAll ? 'auto' : 'none';
+}
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+/* ---------------- painting ---------------- */
+const revealing = new Set();       // states mid-scratch: keep them coated until it lands
+function paint() {
+  refreshYearView(); updateScope(); hideMemoryHover();
+  recount(); rebuildVisIdx();
+  let glow = '';
+  STATES.forEach(s => {
+    const el = document.getElementById('p-' + s.c);
+    const on = isOn(s.c) && !revealing.has(s.c);
+    el.classList.toggle('on', on);
+    for(const owner of ['alex','sam','both']) el.classList.toggle('owner-'+owner,isBoth() && ownerClass('state|'+s.c)==='owner-'+owner);
+    el.classList.toggle('focus', focusSt === s.c);
+    if (on) glow += `<path d="${s.d}"/>`;
+  });
+  gGlow.innerHTML = glow;
+  // only labels sitting on the state itself flip to dark ink; the ones out in
+  // the right-hand column stay light, since they sit on the background
+  gLabels.querySelectorAll('[data-lc]').forEach(t =>
+    t.classList.toggle('rev', !t.classList.contains('side')
+      && isOn(t.dataset.lc) && !revealing.has(t.dataset.lc)));
+  const ns = totalStates();
+  document.getElementById('journalNote').textContent = ns ? `${ns} of 50 states + DC uncovered. ${totalPlaces()} ${totalPlaces() === 1 ? 'city' : 'cities'} along the way. Keep exploring.` : 'Start with somewhere you have been. Every city opens up another part of the map.';
+  updateContext();
+  document.getElementById('nStates').textContent = ns;
+  document.getElementById('meterFill').style.width = (ns / 51 * 100) + '%';
+  document.getElementById('nCities').textContent = totalPlaces();
+  drawCities();
+  renderList();
+}
+
+function burst(x, y) {
+  if (reduced()) return;
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('class','burst'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r', 3/k);
+  gFx.appendChild(c);
+  const t0 = performance.now();
+  (function step(t){
+    const u = Math.min(1,(t-t0)/460);
+    c.setAttribute('r', Math.max(0, (3 + 34*u)/k)); c.style.opacity = 1 - u;
+    u < 1 ? requestAnimationFrame(step) : c.remove();
+  })(t0);
+}
+
+/* ---------------- actions ---------------- */
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Scratches the coating off a state: an amber copy of the state grows out from
+   where you clicked, clipped to a circle, with a little dust thrown off. */
+function scratchOff(c, at) {
+  const generation = effectGeneration;
+  const s = SMAP[c];
+  const cx = at ? at.x : (s.bb[0] + s.bb[2])/2, cy = at ? at.y : (s.bb[1] + s.bb[3])/2;
+  const R = Math.max(Math.hypot(cx - s.bb[0], cy - s.bb[1]), Math.hypot(cx - s.bb[2], cy - s.bb[1]),
+                     Math.hypot(cx - s.bb[0], cy - s.bb[3]), Math.hypot(cx - s.bb[2], cy - s.bb[3])) + 2;
+  const id = 'rv-' + c;
+  const clip = document.createElementNS(NS, 'clipPath');
+  clip.setAttribute('id', id);
+  const circ = document.createElementNS(NS, 'circle');
+  circ.setAttribute('cx', cx); circ.setAttribute('cy', cy); circ.setAttribute('r', 0);
+  clip.appendChild(circ);
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', s.d); path.setAttribute('class', 'reveal '+ownerClass('state|'+c));
+  path.setAttribute('clip-path', `url(#${id})`);
+  gFx.append(clip, path);
+
+  const el = document.getElementById('p-' + c);
+  const dur = 420, t0 = performance.now();
+  (function step(t) {
+    const u = Math.min(1, (t - t0)/dur);
+    if (generation !== effectGeneration) { clip.remove(); path.remove(); return; }
+    circ.setAttribute('r', Math.max(0, R * (1 - Math.pow(1 - u, 3))));
+    if (u < 1) return requestAnimationFrame(step);
+    revealing.delete(c);
+    el.classList.add('nofx'); paint();
+    requestAnimationFrame(() => { clip.remove(); path.remove(); el.classList.remove('nofx'); });
+  })(t0);
+}
+
+function dust(x, y) {
+  for (let i = 0; i < 16; i++) {
+    const a = Math.random() * Math.PI * 2, dist = (10 + Math.random() * 30)/k;
+    const f = document.createElementNS(NS, 'circle');
+    f.setAttribute('class', 'fleck'); f.setAttribute('cx', x); f.setAttribute('cy', y);
+    f.setAttribute('r', (0.5 + Math.random() * 1.2)/k);
+    gFx.appendChild(f);
+    const t0 = performance.now(), life = 380 + Math.random() * 260;
+    (function step(t) {
+      const u = Math.min(1, (t - t0)/life), e = 1 - Math.pow(1 - u, 2);
+      f.setAttribute('cx', x + Math.cos(a) * dist * e);
+      f.setAttribute('cy', y + Math.sin(a) * dist * e);
+      f.style.opacity = 1 - u;
+      u < 1 ? requestAnimationFrame(step) : f.remove();
+    })(t0);
+  }
+}
+
+function clearEffects() {
+  effectGeneration++; revealing.clear(); gFx.innerHTML = '';
+}
+function remember(label) {
+  undoStack.push({data:payload(), label});
+  if (undoStack.length > 20) undoStack.shift();
+  document.getElementById('bUndo').disabled = false;
+}
+function pruneMemories() {
+  recount();
+  for (const key of Object.keys(memories)) {
+    if (key.startsWith('state|') ? !isOn(key.slice(6)) : !visited.has(key)) delete memories[key];
+  }
+}
+function undoChange() {
+  const last = undoStack.pop(); if (!last) return;
+  clearEffects(); applyData(last.data);
+  paint(); save();
+  document.getElementById('bUndo').disabled = !undoStack.length;
+  flash(`Undid ${last.label}.`);
+}
+function toggleState(c, at) {openMemory('state|'+c,at);}
+function toggleCity(i, at) {openMemory(CST[i]+'|'+CLOW[i],at);}
+function focusState(c, andCities) {
+  focusSt = c;
+  if (andCities && mode !== 'city') setMode('city');
+  fitTo(SMAP[c].bb, 30);
+  paint();
+}
+function updateContext() {
+  document.getElementById('viewName').textContent = focusSt ? SMAP[focusSt].n : 'The whole country';
+  document.getElementById('viewHelp').textContent = mode === 'city' ? 'Tap a city to mark your visit' : 'Click a state to scratch it open';
+}
+function setMode(m) {
+  mode = m;
+  updateContext();
+  document.getElementById('mState').setAttribute('aria-pressed', m === 'state');
+  document.getElementById('mCity').setAttribute('aria-pressed', m === 'city');
+  if (m === 'city' && k < 2) flash('Zoom into a state to see its towns — or click a state to jump there.');
+  drawCities();
+}
+let hintT;
+function flash(msg) {
+  const h = document.getElementById('hint');
+  h.textContent = msg; h.classList.add('show');
+  clearTimeout(hintT); hintT = setTimeout(() => h.classList.remove('show'), 3200);
+}
+
+/* ---------------- pointer handling ---------------- */
+let down = null, moved = false, pointers = new Map(), pinch = null;
+let clickT = null;
+
+svg.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  hideMemoryHover();
+  stopAnimation();
+  svg.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = {d: Math.hypot(a.x-b.x, a.y-b.y), cx:(a.x+b.x)/2, cy:(a.y+b.y)/2};
+    down = null; return;
+  }
+  down = {x:e.clientX, y:e.clientY, tx, ty, target:e.target};
+  moved = false;
+});
+svg.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x-b.x, a.y-b.y);
+    if (pinch.d > 0) zoomAt((a.x+b.x)/2, (a.y+b.y)/2, d/pinch.d);
+    pinch.d = d; return;
+  }
+  if (!down) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if (!moved && Math.hypot(dx, dy) > 4) { moved = true; svg.classList.add('dragging'); }
+  if (moved) {
+    const s = svg.getScreenCTM();
+    setView(k, down.tx + dx/s.a, down.ty + dy/s.d);
+  }
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  svg.classList.remove('dragging');
+  if (!down || moved) { down = null; return; }
+  const target = down.target;
+  clearTimeout(clickT);
+  clickT = setTimeout(() => { clickT = null; handleClick(e, target); }, 250);
+  down = null;
+}
+svg.addEventListener('pointerup', endPointer);
+svg.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); down = null; pinch = null; svg.classList.remove('dragging'); });
+
+function nearestDot(m) {
+  const lim = 11 / LAST_SC, lim2 = lim * lim;
+  let best = null, bd = lim2;
+  for (let p = 0; p < RENDERED.length; p += 3) {
+    const dx = RENDERED[p] - m.x, dy = RENDERED[p+1] - m.y, d = dx*dx + dy*dy;
+    if (d < bd) { bd = d; best = RENDERED[p+2]; }
+  }
+  return best;
+}
+function handleClick(e, target) {
+  const m = toMap(e.clientX, e.clientY);
+  if (mode === 'city') {
+    const hit = nearestDot(m);
+    if (hit !== null) {
+      toggleCity(hit, m);
+      return;
+    }
+  }
+  const c = target.dataset && target.dataset.c;
+  if (!c) return;
+  if (mode === 'city') {
+    if (focusSt !== c || k <= 2.5) focusState(c, false);
+  } else toggleState(c, m);
+}
+
+svg.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.pow(1.0016, -e.deltaY)); }, {passive:false});
+svg.addEventListener('dblclick', e => { e.preventDefault(); clearTimeout(clickT); clickT = null; zoomAt(e.clientX, e.clientY, 1.9); });
+
+/* ---------------- map memory hover ---------------- */
+const memoryHover = document.getElementById('memoryHover');
+let hoverMemoryKey = null;
+function hideMemoryHover() {
+  memoryHover.hidden = true; memoryHover.setAttribute('aria-hidden','true'); hoverMemoryKey = null;
+}
+const isBoth = () => true;
+const journalOwns = (d,key) => key.startsWith('state|')
+  ? d.m.includes(key.slice(6)) || d.v.some(k=>k.startsWith(key.slice(6)+'|')) : d.v.includes(key);
+function owners(key,full=false) {const journals=full?Cloud.journals:displayJournals||Cloud.journals;return ['Alex','Sam'].filter(name=>journals[name] && journalOwns(journals[name],key));}
+function refreshYearView(){
+ const years=new Set();let undated=false;
+ for(const d of Object.values(Cloud.journals)){for(const key of [...new Set([...d.m.map(c=>'state|'+c),...d.v,...Object.keys(d.notes).filter(key=>journalOwns(d,key))])]){const date=d.notes[key]?.date;if(date)years.add(date.slice(0,4));else undated=true;}}
+ const filter=document.getElementById('yearFilter');filter.innerHTML='<option value="all">All years</option>'+[...years].sort((a,b)=>b.localeCompare(a)).map(y=>`<option value="${y}">${y}</option>`).join('')+(undated?'<option value="undated">Year not recorded</option>':'');
+ if(selectedYear!=='all'&&!years.has(selectedYear)&&!(selectedYear==='undated'&&undated))selectedYear='all';filter.value=selectedYear;
+ const matches=(d,key)=>selectedYear==='all'||(selectedYear==='undated'?!d.notes[key]?.date:d.notes[key]?.date?.slice(0,4)===selectedYear);
+ displayJournals=Object.fromEntries(Object.entries(Cloud.journals).map(([name,d])=>[name,{...d,m:d.m.filter(c=>matches(d,'state|'+c)),v:d.v.filter(key=>matches(d,key))}]));
+ // Dated state memories also represent a visit even when originally rolled up from cities.
+ if(selectedYear!=='all')for(const [name,d]of Object.entries(Cloud.journals))for(const key of Object.keys(d.notes))if(key.startsWith('state|')&&journalOwns(d,key)&&matches(d,key))displayJournals[name].m.push(key.slice(6));
+ if(travelerFilter==='Both'){
+  const sharedStates=STATES.filter(s=>['Alex','Sam'].every(name=>journalOwns(displayJournals[name],'state|'+s.c))).map(s=>s.c);
+  const sharedCities=displayJournals.Alex.v.filter(key=>displayJournals.Sam.v.includes(key));
+  for(const d of Object.values(displayJournals)){d.m=sharedStates;d.v=sharedCities;}
+ }
+ if(['Alex','Sam'].includes(travelerFilter)){const other=travelerFilter==='Alex'?'Sam':'Alex';displayJournals[other]={...displayJournals[other],m:[],v:[]};}
+ marked=new Set(Object.values(displayJournals).flatMap(d=>d.m));visited=new Set(Object.values(displayJournals).flatMap(d=>d.v));
+ memories=Object.create(null);
+ for(const key of [...marked].map(c=>'state|'+c).concat([...visited])){
+  const entries=owners(key).map(name=>Cloud.journals[name].notes[key]).filter(Boolean);
+  if(entries.length){const dates=[...new Set(entries.map(m=>m.date).filter(Boolean))].sort(),notes=[...new Set(entries.map(m=>m.note).filter(Boolean))];memories[key]={date:dates[0]||'',note:notes.join(' · ').replace(/\s+/g,' ').slice(0,140),photo:entries.find(m=>m.photo)?.photo||''};}
+ }
+
+ if(selectedYear!=='all'||travelerFilter!=='all')visited.forEach(key=>expanded.add(key.split('|')[0]));
+}
+document.getElementById('yearFilter').onchange=e=>{selectedYear=e.target.value;listFilter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter==='all'));paint();};
+document.getElementById('travelerFilter').onchange=e=>{travelerFilter=e.target.value;paint();};
+function ownerClass(key) {const names=owners(key);return names.length===2?'owner-both':names.length?'owner-'+names[0].toLowerCase():'';}
+function ownerBadges(key) {return isBoth()?'<span class="owner-badges">'+owners(key).map(name=>`<span class="owner-badge ${name.toLowerCase()}">${name}</span>`).join('')+'</span>':'';}
+function credit(d,key) {
+  if(d.addedBy?.[key])return 'Added by '+d.addedBy[key];
+  if(key.startsWith('state|') && !d.m.includes(key.slice(6))){const keys=d.v.filter(k=>k.startsWith(key.slice(6)+'|'));const names=[...new Set(keys.map(k=>d.addedBy?.[k]).filter(Boolean))];return names.length?'Added through city visits by '+names.join(' & '):'Visited through city entries · earlier authors not recorded';}
+  return 'Earlier entry · author not recorded';
+}
+function sharedMemoryMarkup(key,preview=false) {
+ const names=owners(key),entries=names.map(name=>Cloud.journals[name].notes[key]).filter(Boolean);
+ if(!names.length)return '<p class="combined-help">No visit in this selection.</p>';
+ const notes=[...new Set(entries.map(m=>m.note).filter(Boolean))],dates=[...new Set(entries.map(m=>m.date).filter(Boolean))].sort(),photos=[...new Set(entries.map(m=>m.photo).filter(Boolean))];
+ const text=notes.join('\n\n'),shown=preview&&text.length>160?text.slice(0,157)+'…':text;
+ return `<section class="shared-memory"><h3>${names.map(name=>`<span class="owner-badge ${name.toLowerCase()}">${name}</span>`).join(' ')}</h3>${dates.length?`<p class="hover-date">First visited · ${dates.map(d=>esc(displayDate(d))).join(' · ')}</p>`:''}${photos.map(photo=>`<img src="${photo}" alt="Travel memory photo">`).join('')}${shown?`<p>${esc(shown)}</p>`:''}${!shown&&!photos.length?'<p class="combined-help">Add a memory from this trip.</p>':''}</section>`;
+}
+const bothMemoryDialog=document.getElementById('bothMemoryDialog');
+function openBothMemory(key) {
+  hideMemoryHover();document.getElementById('bothMemoryTitle').textContent=key.startsWith('state|')?SMAP[key.slice(6)].n:`${CN[IDX[key]]}, ${CST[IDX[key]]}`;
+  document.getElementById('bothMemoryContent').innerHTML=sharedMemoryMarkup(key);bothMemoryDialog.showModal();
+}
+document.getElementById('bothMemoryClose').onclick=()=>bothMemoryDialog.close();
+function updateScope() {
+  document.body.classList.add('view-both');
+  document.getElementById('q').placeholder='Find a state or city…';
+  document.getElementById('bUndo').disabled=!undoStack.length;
+}
+function hoverMemoryMarkup(key) {
+  if(isBoth()) {const name=key.startsWith('state|')?SMAP[key.slice(6)].n:`${CN[IDX[key]]}, ${CST[IDX[key]]}`;return `<div class="hover-kind">Our travels</div><h3>${esc(name)}</h3>${sharedMemoryMarkup(key,true)}`;}
+  const state = key.startsWith('state|'), code = state ? key.slice(6) : CST[IDX[key]];
+  const name = state ? SMAP[code].n : `${CN[IDX[key]]}, ${code}`;
+  const memory = memories[key], on = state ? isOn(code) : visited.has(key);
+  const note = memory?.note || '', shortNote = note.length > 260 ? note.slice(0,257) + '…' : note;
+  let h = `<div class="hover-kind">${state ? 'State' : 'City'} · ${on ? 'Visited' : 'Still to explore'}</div><h3>${esc(name)}</h3>`;
+  if (memory?.date) h += `<p class="hover-date">First visited · ${esc(displayDate(memory.date))}</p>`;
+  if (memory?.photo) h += `<img src="${memory.photo}" alt="Visit photo for ${esc(name)}">`;
+  if (shortNote) h += `<p class="hover-note">${esc(shortNote)}</p>`;
+  if (!memory && on) h += '<p class="hover-help">Add your first visit, memory or photo with ✎ in the travel journal.</p>';
+  if (note.length > 260) h += '<p class="hover-help">Open ✎ in the journal to read the full memory.</p>';
+  if (state && cityCount[code]) h += `<p class="hover-help">${cityCount[code]} ${cityCount[code] === 1 ? 'city visited' : 'cities visited'} · hover a mint dot for its memory.</p>`;
+  return h;
+}
+svg.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' || down || pointers.size || memoryDialog.open || bothMemoryDialog.open) { hideMemoryHover(); return; }
+  const mapPoint = toMap(e.clientX,e.clientY), dot = nearestDot(mapPoint);
+  let key = null;
+  if (dot !== null) key = CST[dot] + '|' + CLOW[dot];
+  else {
+    const code = e.target.dataset?.c;
+    if (code && SMAP[code]) key = 'state|' + code;
+  }
+  if (!key) { hideMemoryHover(); return; }
+  if (key !== hoverMemoryKey) { memoryHover.innerHTML = hoverMemoryMarkup(key); hoverMemoryKey = key; }
+  const bounds = document.getElementById('stage').getBoundingClientRect();
+  memoryHover.hidden = false; memoryHover.setAttribute('aria-hidden','false');
+  memoryHover.style.maxHeight = Math.max(80,bounds.height-24) + 'px';
+  const width = memoryHover.offsetWidth, height = memoryHover.offsetHeight;
+  const x = e.clientX-bounds.left, y=e.clientY-bounds.top;
+  let left=x+18, top=y+16;
+  if (left+width > bounds.width-12) left=x-width-18;
+  if (top+height > bounds.height-12) top=y-height-16;
+  memoryHover.style.left = Math.max(12,Math.min(left,bounds.width-width-12)) + 'px';
+  memoryHover.style.top = Math.max(12,Math.min(top,bounds.height-height-12)) + 'px';
+});
+svg.addEventListener('pointerleave',hideMemoryHover);
+
+/* ---------------- panel list ---------------- */
+const listEl = document.getElementById('list');
+function renderList() {
+  const arr = STATES.filter(s => ((selectedYear==='all'&&travelerFilter==='all')||isOn(s.c)) && (listFilter === 'all' || (listFilter === 'visited' ? isOn(s.c) : !isOn(s.c))));
+  document.getElementById('listTitle').textContent = `${listFilter === 'all' ? 'All states' : listFilter === 'visited' ? 'Visited states' : 'Unvisited states'} · ${arr.length}${selectedYear==='all'?'':' · '+(selectedYear==='undated'?'Year not recorded':selectedYear)}${travelerFilter==='all'?'':' · '+(travelerFilter==='Both'?'Both visited':travelerFilter)}`;
+  if (sortBy === 'places') arr.sort((a, b) => (cityCount[b.c]||0) - (cityCount[a.c]||0) || a.n.localeCompare(b.n));
+  else arr.sort((a, b) => a.n.localeCompare(b.n));
+  let h = arr.length ? '' : `<div class="empty-ledger">${selectedYear!=='all'||travelerFilter!=='all' ? 'No first visits match these filters.' : listFilter === 'visited' ? 'Your visited states will appear here. Mark a state or find a city to begin.' : 'You have uncovered every state and DC. What a journey!'}</div>`;
+  arr.forEach(s => {
+    const on = isOn(s.c), n = cityCount[s.c] || 0;
+    h += `<div class="row ${on ? 'v' : ''} ${focusSt === s.c ? 'focused' : ''}">
+      <button class="mark" data-mk="${s.c}" data-s="${on ? 'on' : 'off'}" title="Edit visit for ${s.n}" aria-label="Edit visit for ${s.n}"  aria-pressed="${on}">✓</button>
+      <button class="nm" data-go="${s.c}" title="Zoom to ${s.n}"><span>${s.n}</span>${ownerBadges('state|'+s.c)}${memories['state|' + s.c] ? `<span class="state-memory">${esc([memories['state|' + s.c].date ? displayDate(memories['state|' + s.c].date) : '', memories['state|' + s.c].note].filter(Boolean).join(' · '))}</span>${memories['state|' + s.c].photo ? `<img class="visit-thumbnail" src="${memories['state|' + s.c].photo}" alt="Visit photo for ${s.n}" loading="lazy">` : ''}` : ''}</button>
+      ${on ? `<button class="memory-button ${memories['state|' + s.c] ? 'has-memory' : ''}" data-memory="state|${s.c}" title="Visit details for ${s.n}" aria-label="Edit visit details for ${s.n}">✎</button>` : ''}
+      ${n ? `<span class="ct num">${n}</span><button class="exp" data-ex="${s.c}" aria-label="Show visited cities in ${s.n}" aria-expanded="${expanded.has(s.c)}">${expanded.has(s.c) ? '▾' : '▸'}</button>` : '<span class="exp"></span>'}
+    </div>`;
+    if (expanded.has(s.c) && n) {
+      h += '<div class="sub">';
+      const items = [];
+      visited.forEach(key => { if (key.slice(0, key.indexOf('|')) === s.c) { const i = IDX[key]; items.push({n: i !== undefined ? CN[i] : key.split('|')[1], key}); } });
+      items.sort((a, b) => a.n.localeCompare(b.n));
+      items.forEach(it => {
+        const memory = memories[it.key];
+        const preview = memory ? [memory.date ? displayDate(memory.date) : '', memory.note].filter(Boolean).join(' · ') : '';
+        h += `<div class="city-row"><span class="city-text">${esc(it.n)}${ownerBadges(it.key)}${preview ? `<span class="memory-preview">${esc(preview)}</span>` : ''}${memory?.photo ? `<img class="visit-thumbnail" src="${memory.photo}" alt="Visit photo for ${esc(it.n)}" loading="lazy">` : ''}</span><button class="city-memory ${memory ? 'has-memory' : ''}" data-memory="${esc(it.key)}" title="Visit details for ${esc(it.n)}" aria-label="Edit visit details for ${esc(it.n)}">✎</button></div>`;
+      });
+      h += '</div>';
+    }
+  });
+  const active = document.activeElement;
+  const identity = active && active.closest('#list') ? ['mk','go','ex','rv','memory'].find(key => active.dataset[key]) : null;
+  const value = identity ? active.dataset[identity] : null;
+  listEl.innerHTML = h;
+  if (identity) [...listEl.querySelectorAll('button')].find(b => b.dataset[identity] === value)?.focus({preventScroll:true});
+}
+listEl.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mk) toggleState(b.dataset.mk);
+  else if (b.dataset.go) focusState(b.dataset.go, mode === 'city');
+  else if (b.dataset.ex) { const c = b.dataset.ex; expanded.has(c) ? expanded.delete(c) : expanded.add(c); renderList(); }
+  else if (b.dataset.rv) toggleCity(IDX[b.dataset.rv]);
+  else if (b.dataset.memory) openMemory(b.dataset.memory);
+});
+document.getElementById('sortBtn').onclick = function () {
+  sortBy = sortBy === 'name' ? 'places' : 'name';
+  this.textContent = sortBy === 'name' ? 'by name' : 'by places';
+  renderList();
+};
+
+document.querySelector('.list-filter').addEventListener('click', e => {
+  const button = e.target.closest('[data-filter]'); if (!button) return;
+  listFilter = button.dataset.filter;
+  document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', b.dataset.filter === listFilter));
+  renderList();
+});
+
+/* ---------------- visit memories ---------------- */
+const memoryDialog = document.getElementById('memoryDialog');
+const memorySave = document.getElementById('memorySave');
+const memoryMessage = document.getElementById('memoryMessage');
+const MAX_PHOTO_LENGTH = 180000;
+let editingMemory = null, memoryOpener = null, draftPhoto = '', photoBusy = false, memoryGeneration = 0;
+function displayDate(date) {
+  const [year,month] = date.split('-').map(Number);
+  const d = new Date(2000,month-1,1); d.setFullYear(year);
+  return d.toLocaleDateString(undefined,{year:'numeric',month:'short'});
+}
+function updatePhotoPreview() {
+  const image = document.getElementById('photoImage');
+  document.getElementById('photoPreview').hidden = !draftPhoto;
+  if (draftPhoto) image.src = draftPhoto; else image.removeAttribute('src');
+}
+let draftEntries={},activeMemoryPerson='Alex',visitPoint=null;
+function entryFields(m={}) {return {month:m.date?.slice(5,7)||'',year:m.date?String(+m.date.slice(0,4)):'',note:m.note||'',photo:m.photo||''};}
+function stashFields(){draftEntries[activeMemoryPerson]={month:document.getElementById('visitMonth').value,year:document.getElementById('visitYear').value.trim(),note:document.getElementById('visitNote').value,photo:draftPhoto};}
+function fillFields(){const d=draftEntries[activeMemoryPerson];document.getElementById('visitMonth').value=d.month;document.getElementById('visitYear').value=d.year;document.getElementById('visitNote').value=d.note;draftPhoto=d.photo;updatePhotoPreview();}
+function visitNames(){const who=document.getElementById('visitWho').value;return who==='Both'?['Alex','Sam']:who==='none'?[]:[who];}
+function updateEntryControls(){const names=visitNames();document.getElementById('entryCredit').textContent=names.map(name=>name+': '+(journalOwns(Cloud.journals[name],editingMemory)?credit(Cloud.journals[name],editingMemory):'new visit')).join(' · ');document.getElementById('memoryFields').hidden=!names.length;document.getElementById('sharedDetails').hidden=names.length!==2;if(names.length===1)activeMemoryPerson=names[0];else if(names.length===2)activeMemoryPerson='Both';fillFields();}
+function openMemory(key,at=null) {
+  hideMemoryHover();editingMemory=key;visitPoint=at;memoryOpener=document.activeElement;memoryGeneration++;
+  document.getElementById('memoryTitle').textContent=key.startsWith('state|')?SMAP[key.slice(6)].n:`${CN[IDX[key]]}, ${CST[IDX[key]]}`;
+  const names=owners(key,true);document.getElementById('visitWho').value=names.length===2?'Both':names[0]||'Both';
+  draftEntries=Object.fromEntries(['Alex','Sam'].map(name=>[name,entryFields(Cloud.journals[name].notes[key])]));
+  const existing=['Alex','Sam'].map(name=>Cloud.journals[name].notes[key]).filter(Boolean);
+  draftEntries.Both=entryFields({date:existing.map(m=>m.date).filter(Boolean).sort()[0]||'',note:[...new Set(existing.map(m=>m.note).filter(Boolean))].join('\n\n'),photo:existing.find(m=>m.photo)?.photo||''});
+  activeMemoryPerson=names[0]||'Alex';document.getElementById('memoryWho').value=activeMemoryPerson;
+  document.getElementById('applyBoth').checked=JSON.stringify(draftEntries.Alex)===JSON.stringify(draftEntries.Sam);
+  document.getElementById('rollupHelp').hidden=!key.startsWith('state|')||!['Alex','Sam'].some(name=>Cloud.journals[name].v.some(k=>k.startsWith(key.slice(6)+'|')));
+  document.getElementById('visitPhoto').value='';document.getElementById('visitPhoto').disabled=false;document.getElementById('removePhoto').disabled=false;
+  photoBusy=false;memorySave.disabled=false;memorySave.textContent='Save visit';memoryMessage.textContent='';
+  updateEntryControls();memoryDialog.showModal();
+}
+document.getElementById('visitWho').onchange=()=>{if(photoBusy)return;stashFields();updateEntryControls();};
+document.getElementById('memoryWho').onchange=()=>{if(photoBusy)return;stashFields();if(document.getElementById('applyBoth').checked)draftEntries[document.getElementById('memoryWho').value]={...draftEntries[activeMemoryPerson]};activeMemoryPerson=document.getElementById('memoryWho').value;fillFields();};
+document.getElementById('memoryCancel').onclick = () => memoryDialog.close();
+memoryDialog.addEventListener('close', () => {
+  editingMemory = null; memoryGeneration++; photoBusy = false; draftPhoto = '';
+  for(const id of ['visitWho','memoryWho','applyBoth'])document.getElementById(id).disabled=false;
+  document.getElementById('photoImage').removeAttribute('src');
+  if (memoryOpener?.isConnected) memoryOpener.focus({preventScroll:true});
+  else if (memoryOpener?.dataset.memory) [...listEl.querySelectorAll('[data-memory]')].find(b => b.dataset.memory === memoryOpener.dataset.memory)?.focus({preventScroll:true});
+});
+async function resizePhoto(file) {
+  if (file.size > 25 * 1024 * 1024) throw new Error('Please choose a photo smaller than 25 MB.');
+  if (!/^image\/(jpeg|png|webp|gif|bmp)$/i.test(file.type)) throw new Error('Please choose a JPG, PNG or WebP photo. Convert HEIC photos to JPG first.');
+  const url = URL.createObjectURL(file), image = new Image();
+  try {
+    await new Promise((resolve,reject) => {
+      image.onload = resolve; image.onerror = () => reject(new Error('This photo could not be opened. Try a JPG or PNG.')); image.src = url;
+    });
+    if (!image.naturalWidth || !image.naturalHeight) throw new Error('This photo could not be opened.');
+    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Photo attachments are unavailable in this browser.');
+    for (const edge of [960,720,512,360]) {
+      const scale = Math.min(1,edge/Math.max(image.naturalWidth,image.naturalHeight));
+      canvas.width = Math.max(1,Math.round(image.naturalWidth*scale)); canvas.height = Math.max(1,Math.round(image.naturalHeight*scale));
+      ctx.fillStyle = '#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+      for (const quality of [0.8,0.65,0.5]) {
+        const photo = canvas.toDataURL('image/jpeg',quality);
+        if (validPhoto(photo)) return photo;
+      }
+    }
+    throw new Error('This photo is too detailed to save. Try a smaller image.');
+  } finally { URL.revokeObjectURL(url); }
+}
+document.getElementById('visitPhoto').onchange = async function () {
+  const file = this.files[0]; if (!file || !editingMemory) return;
+  const generation = memoryGeneration;
+  photoBusy = true;document.getElementById('visitWho').disabled=true;document.getElementById('memoryWho').disabled=true;document.getElementById('applyBoth').disabled=true;this.disabled = true;document.getElementById('removePhoto').disabled = true;memorySave.disabled = true;memoryMessage.textContent = 'Preparing your photo…';
+  try {
+    const photo = await resizePhoto(file);
+    if (generation !== memoryGeneration) return;
+    draftPhoto = photo;updatePhotoPreview();memoryMessage.textContent = 'Photo ready. Choose Save memory to attach it.';
+  } catch(e) { if (generation === memoryGeneration) memoryMessage.textContent = e.message; }
+  finally {
+    if (generation === memoryGeneration) { photoBusy = false;document.getElementById('visitWho').disabled=false;document.getElementById('memoryWho').disabled=false;document.getElementById('applyBoth').disabled=false;memorySave.disabled = false;this.disabled = false;document.getElementById('removePhoto').disabled = false;this.value = ''; }
+  }
+};
+document.getElementById('removePhoto').onclick = () => {
+  draftPhoto = ''; updatePhotoPreview();memoryMessage.textContent = 'Photo removed from this draft. Choose Save memory to apply.';
+};
+async function saveMemory(e) {
+  e?.preventDefault();if(!editingMemory||photoBusy||memorySave.disabled)return;
+  stashFields();const names=visitNames(),key=editingMemory,generation=memoryGeneration;
+  if(names.length===2){const shared={...draftEntries[activeMemoryPerson]};draftEntries.Alex={...shared};draftEntries.Sam={...shared};}
+  const details={};for(const name of names){const d=draftEntries[name];if(!!d.month!==!!d.year){memoryMessage.textContent='Choose a month and year for '+name+', or leave both blank.';return;}const date=d.month&&d.year?d.year.padStart(4,'0')+'-'+d.month:'';if(date&&!validMonth(date)){memoryMessage.textContent='Enter a valid month and whole year for '+name+'.';return;}if(d.note.length>2000){memoryMessage.textContent='Keep each memory under 2,000 characters.';return;}details[name]={date,note:d.note.trim(),photo:d.photo};}
+  const next=payload(),before=isOn(key.startsWith('state|')?key.slice(6):CST[IDX[key]]);
+  for(const name of ['Alex','Sam']){
+    const d=next.journals[name],state=key.startsWith('state|'),values=new Set(state?d.m:d.v),value=state?key.slice(6):key;
+    if(names.includes(name)){if(!state||d.m.includes(value)||!journalOwns(d,key))values.add(value);const m=details[name];if(m.date||m.note||m.photo)d.notes[key]=m;else delete d.notes[key];}
+    else {values.delete(value);if(!state||!d.v.some(k=>k.startsWith(value+'|')))delete d.notes[key];}
+    if(state)d.m=[...values];else d.v=[...values];
+    // A removed city may have been the final visit keeping its state memory alive.
+    for(const noteKey of Object.keys(d.notes))if(!journalOwns(d,noteKey))delete d.notes[noteKey];
+  }
+  remember('visit details');applyData(next);memorySave.disabled=true;memorySave.textContent='Saving…';
+  try {
+   const ok=await saveNow();paint();if(!ok){memoryMessage.textContent=document.getElementById('saveState').textContent+' Your draft is kept on this device. Try Save again.';return;}
+   if(generation===memoryGeneration){memoryDialog.close();sfxScratch();const code=key.startsWith('state|')?key.slice(6):CST[IDX[key]];if(!before&&isOn(code)&&!reduced()){revealing.add(code);scratchOff(code,visitPoint);paint();}flash(ok?'Visit saved.':'Visit kept in this tab. Export a backup if sync remains unavailable.');}
+  }catch(e){memoryMessage.textContent=e.message;}
+  finally{if(generation===memoryGeneration){memorySave.disabled=false;memorySave.textContent='Save visit';}}
+}
+// Explicit click handling avoids silent native date validation blocking submit.
+memorySave.onclick = saveMemory;
+document.getElementById('memoryForm').onsubmit = saveMemory;
+
+/* ---------------- search ---------------- */
+const q = document.getElementById('q'), resBox = document.getElementById('results');
+let resIdx = -1, resItems = [];
+function closeSearch() {
+  resBox.classList.remove('show'); q.setAttribute('aria-expanded','false');
+  q.removeAttribute('aria-activedescendant'); resIdx = -1; resItems = [];
+}
+function selectResult(n) {
+  resIdx = n;
+  [...resBox.querySelectorAll('[role="option"]')].forEach((el,j) => {
+    el.classList.toggle('sel', j === n); el.setAttribute('aria-selected', j === n);
+  });
+  if (n >= 0) q.setAttribute('aria-activedescendant', `result-${n}`);
+  else q.removeAttribute('aria-activedescendant');
+}
+q.addEventListener('input', () => {
+  const term = q.value.trim().toLowerCase(); closeSearch();
+  if (term.length < 2) return;
+  const matches = [];
+  const parts = term.split(',').map(x => x.trim()), name = parts[0], region = parts[1] || '';
+  if (!region) for (const st of STATES) {
+    const full = st.n.toLowerCase(), code = st.c.toLowerCase(), pos = full.indexOf(name);
+    if (pos >= 0 || code === name) matches.push({kind:'state',code:st.c,rank:full === name || code === name ? 0 : pos === 0 ? 1 : 2,tier:-1,name:st.n});
+  }
+  for (let i = 0; i < NCITY; i++) {
+    const pos = CLOW[i].indexOf(name);
+    if (pos < 0 || (region && CST[i].toLowerCase() !== region && !SMAP[CST[i]].n.toLowerCase().startsWith(region))) continue;
+    matches.push({kind:'city',i,rank:CLOW[i] === name ? 0 : pos === 0 ? 1 : 2,tier:CT[i],name:CN[i]});
+  }
+  matches.sort((a,b) => a.rank-b.rank || a.tier-b.tier || a.name.localeCompare(b.name) || (a.code || CST[a.i]).localeCompare(b.code || CST[b.i]));
+  resItems = matches.slice(0,40);
+  if (!resItems.length) resBox.innerHTML = '<div class="empty" role="status">No matching states or cities. Try a state abbreviation or “city, state”.</div>';
+  else resBox.innerHTML = resItems.map((item,n) => {
+    const state = item.kind === 'state', code = state ? item.code : CST[item.i];
+    const on = state ? isOn(code) : visited.has(code + '|' + CLOW[item.i]);
+    return `<button type="button" tabindex="-1" role="option" aria-selected="false" id="result-${n}" data-result="${n}"><span>${esc(item.name)}</span>${on ? '<span class="mk">visited</span>' : ''}<span class="s">${state ? '<span class="result-kind">State</span>' : SMAP[code].n}</span></button>`;
+  }).join('');
+  resBox.classList.add('show'); q.setAttribute('aria-expanded','true');
+  selectResult(resItems.length ? 0 : -1);
+});
+q.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeSearch(); return; }
+  if (!resBox.classList.contains('show') || !resItems.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    selectResult((resIdx + (e.key === 'ArrowDown' ? 1 : -1) + resItems.length) % resItems.length);
+    resBox.children[resIdx].scrollIntoView({block:'nearest'});
+  } else if (e.key === 'Enter' && resIdx >= 0) { e.preventDefault(); pickResult(resIdx); }
+  else if (e.key === 'Tab') closeSearch();
+});
+resBox.addEventListener('click', e => { const b = e.target.closest('button'); if (b) pickResult(+b.dataset.result); });
+function pickResult(n) {
+ const item=resItems[n];if(!item)return;const key=item.kind==='city'?CST[item.i]+'|'+CLOW[item.i]:'state|'+item.code;closeSearch();q.value='';openMemory(key);
+}
+function pickCity(i){if(Number.isInteger(i)&&i>=0&&i<NCITY)openMemory(CST[i]+'|'+CLOW[i]);}
+document.addEventListener('click', e => { if (!e.target.closest('.search')) closeSearch(); });
+
+/* ---------------- sound ----------------
+   Everything is synthesised on the fly: a gentle, low-volume wooden tick for
+   opening a state or marking a city. No
+   audio files, so the app stays one portable file. */
+let sound = true, ac = null, master = null;
+function audio() {
+  if (!ac) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (C) {
+      ac = new C();
+      master = ac.createGain();
+      master.gain.value = 0.22;
+      const lim = ac.createDynamicsCompressor();   // catches peaks, never clips
+      lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12;
+      lim.attack.value = 0.003; lim.release.value = 0.15;
+      master.connect(lim); lim.connect(ac.destination);
+      // a context created mid-gesture can swallow the very first sound handed
+      // to it, so start its clock on a silent buffer first
+      const w = ac.createBufferSource();
+      w.buffer = ac.createBuffer(1, 1, ac.sampleRate);
+      w.connect(master); w.start(0);
+    }
+  }
+  try { if (ac && ac.state === 'suspended' && ac.resume) { const r = ac.resume(); if (r && r.catch) r.catch(() => {}); } } catch (e) {}
+  return ac;
+}
+document.addEventListener('pointerdown', () => audio(), {once:true, capture:true});
+
+/* A freshly created AudioContext reports currentTime === 0 and only starts its
+   clock once it begins rendering. Scheduling against that cold clock puts the
+   whole envelope in the past, so the gain ramp evaluates past its own decay and
+   the sound comes out silent. This waits for the clock to actually move before
+   handing the caller a start time. */
+function schedule(play) {
+  const ctx = audio();
+  if (!ctx || !sound) return;
+  if (ctx.currentTime > 0) return play(ctx, ctx.currentTime + 0.02);
+  let tries = 0;
+  const tick = setInterval(() => {
+    if (ctx.currentTime > 0) { clearInterval(tick); play(ctx, ctx.currentTime + 0.02); }
+    else if (++tries > 40) clearInterval(tick);
+  }, 8);
+}
+
+function sfxScratch() {
+  schedule((ctx,t0)=>{
+    const tone=ctx.createOscillator(),gain=ctx.createGain();
+    tone.type='sine';tone.frequency.setValueAtTime(510,t0);tone.frequency.exponentialRampToValueAtTime(330,t0+0.11);
+    gain.gain.setValueAtTime(0,t0);gain.gain.linearRampToValueAtTime(0.12,t0+0.012);gain.gain.exponentialRampToValueAtTime(0.001,t0+0.13);
+    tone.connect(gain);gain.connect(master);tone.start(t0);tone.stop(t0+0.15);
+    tone.onended=()=>{tone.disconnect();gain.disconnect();};
+  });
+}
+
+const SOUND_KEY = 'usscratch:sound';
+const soundBtn = document.getElementById('bSound');
+function setSound(v, persist) {
+  sound = v;
+  soundBtn.setAttribute('aria-pressed', v);
+  soundBtn.title = v ? 'Turn sound off' : 'Turn sound on';
+  if (persist) store.set(SOUND_KEY, v ? '1' : '0');
+}
+soundBtn.onclick = () => { setSound(!sound, true); if (sound) sfxScratch(); };
+
+/* ---------------- storage ----------------
+   Works in two places: inside a host that provides window.storage, and as a
+   plain file opened from disk, where localStorage is all there is. Either can
+   be missing or throw (private windows, blocked site data), so every access is
+   wrapped and the app still runs with no persistence at all. */
+const KEY = 'usscratch:v1';
+let saveT;
+function payload() {return Cloud.snapshot();}
+
+const store = {
+  async get(key) {
+    if (key === KEY) return JSON.stringify(await Cloud.read());
+    if (window.storage) {
+      try { const r = await window.storage.get(key); if (r && r.value != null) return r.value; } catch (e) {}
+    }
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  },
+  async set(key, value) {
+    if (key === KEY) { await Cloud.write(JSON.parse(value)); return true; }
+    if (window.storage) {
+      try { await window.storage.set(key, value); return true; } catch (e) {}
+    }
+    try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+  }
+};
+
+let persistQueue = Promise.resolve(), saveSequence = 0;
+async function saveNow() {
+  clearTimeout(saveT); saveT = null;
+  const sequence = ++saveSequence, data = JSON.stringify(payload());
+  const status = document.getElementById('saveState');status.textContent = 'Saving…';
+  const task = persistQueue.then(() => store.set(KEY,data));
+  persistQueue = task.catch(() => false);
+  let ok = false;
+  try { ok = await task; } catch(e) { status.textContent = e.message; status.classList.add("warn"); return false; }
+  if (sequence === saveSequence) {
+    status.textContent = ok ? (Cloud.dirty?'Draft kept on this device · save changes':'Saved on this device') : 'Not saved — export a backup';
+    status.classList.toggle('warn',!ok);
+  }
+  return ok;
+}
+function save() {
+  document.getElementById('saveState').textContent = 'Saving…';
+  clearTimeout(saveT);saveT = setTimeout(() => saveNow(),350);
+}
+async function load() {
+  const raw = await store.get(KEY);
+  if (raw) {
+    try { applyData(JSON.parse(raw)); document.getElementById('saveState').textContent = Cloud.dirty?'Recovered unsynced visits · saving…':'Saved on this device';if(Cloud.dirty)await saveNow(); }
+    catch (e) { document.getElementById('saveState').textContent='Saved travel data could not be loaded.';throw e; }
+  } else {
+    document.getElementById('saveState').textContent = 'Ready · your marks save automatically';
+  }
+  const sv = await store.get(SOUND_KEY);
+  if (sv != null) setSound(sv !== '0', false);
+}
+function validMonth(value) {
+  return typeof value === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) && !value.startsWith('0000');
+}
+function legacyDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000')) return false;
+  const date = new Date(value + 'T12:00:00Z');return !isNaN(date) && date.toISOString().slice(0,10) === value;
+}
+function validPhoto(value) {
+  return typeof value === 'string' && value.length <= MAX_PHOTO_LENGTH && /^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(value);
+}
+function normalizeJournal(d){
+ if(!d||!Array.isArray(d.m)||!Array.isArray(d.v)||d.m.some(c=>!Object.hasOwn(SMAP,c))||d.v.some(key=>!Object.hasOwn(IDX,key)))throw Error('Invalid travel backup');
+ const notes={};if(d.notes!==undefined){if(!d.notes||typeof d.notes!=='object'||Array.isArray(d.notes))throw Error('Invalid memories');for(const [key,m]of Object.entries(d.notes)){
+  const known=key.startsWith('state|')?Object.hasOwn(SMAP,key.slice(6)):Object.hasOwn(IDX,key);
+  if(!known||!m||typeof m.date!=='string'||typeof m.note!=='string'||m.note.length>2000||(m.date&&!validMonth(m.date)&&!legacyDate(m.date))||(m.photo!==undefined&&typeof m.photo!=='string')||(m.photo&&!validPhoto(m.photo)))throw Error('Invalid visit details');
+  if(journalOwns(d,key)&&(m.date||m.note.trim()||m.photo))notes[key]={date:m.date.slice(0,7),note:m.note.trim(),photo:m.photo||''};
+ }}
+ return {version:3,m:[...new Set(d.m)],v:[...new Set(d.v)],notes,addedBy:d.addedBy||{}};
+}
+function applyData(d,label=null){
+ if(d?.version!==4||!d.journals)throw Error('Invalid shared-map backup');
+ const next=Object.fromEntries(['Alex','Sam'].map(name=>[name,normalizeJournal(d.journals[name])]));
+ if(label)remember(label);Cloud.replace(next);const combined=Cloud.aggregate();marked=new Set(combined.m);visited=new Set(combined.v);memories=Object.create(null);recount();
+}
+/* export / import / reset */
+document.getElementById('bExport').onclick = () => {
+  const blob = new Blob([JSON.stringify(payload(), null, 1)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'our-travels.json';
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+document.getElementById('bImport').onclick = () => document.getElementById('fileIn').click();
+let pendingBackup=null;
+document.getElementById('fileIn').onchange=async function(){const f=this.files[0];if(!f)return;try{if(f.size>64*1024*1024)throw Error('Backup too large');const d=JSON.parse(await f.text());if(d.version===4){for(const name of ['Alex','Sam'])normalizeJournal(d.journals?.[name]);pendingBackup=d;document.getElementById('backupTarget').hidden=true;}else{pendingBackup=normalizeJournal(d);document.getElementById('backupTarget').hidden=false;}document.getElementById('backupDialog').showModal();}catch(e){flash('That file did not look like a travel backup.');}this.value='';};
+document.getElementById('backupCancel').onclick=()=>document.getElementById('backupDialog').close();
+document.getElementById('backupConfirm').onclick=async()=>{
+ const d=pendingBackup;if(!d)return;let next;
+ if(d.version===4)next=d;else{next=payload();const who=document.getElementById('backupTarget').value;for(const name of who==='Both'?['Alex','Sam']:[who])next.journals[name]=JSON.parse(JSON.stringify(d));}
+ applyData(next,'backup import');clearEffects();expanded.clear();paint();document.getElementById('backupDialog').close();pendingBackup=null;await saveNow();flash('Backup imported.');
+};
+const resetBtn = document.getElementById('bReset');
+const helpDialog=document.getElementById('helpDialog');document.getElementById('bHelp').onclick=()=>helpDialog.showModal();document.getElementById('helpClose').onclick=()=>helpDialog.close();helpDialog.addEventListener('close',()=>document.getElementById('optionsToggle').focus());
+const clearDialog=document.getElementById('clearDialog'),clearConfirm=document.getElementById('clearConfirm');let clearApplied=false;
+resetBtn.onclick=()=>{
+ if(!Object.values(Cloud.journals).some(d=>d.m.length||d.v.length)){flash('Nothing to clear yet.');return;}
+ clearApplied=false;document.getElementById('clearMessage').textContent='';clearConfirm.textContent='Clear map';clearDialog.showModal();document.getElementById('clearCancel').focus();
+};
+document.getElementById('clearCancel').onclick=()=>clearDialog.close();
+clearDialog.addEventListener('close',()=>document.getElementById('optionsToggle').focus());
+clearDialog.addEventListener('cancel',e=>{if(clearConfirm.disabled)e.preventDefault();});
+clearConfirm.onclick=async()=>{
+ clearConfirm.disabled=true;document.getElementById('clearCancel').disabled=true;clearConfirm.textContent='Clearing…';
+ try{
+  if(!clearApplied){remember('clear all');clearEffects();Cloud.replace({Alex:{version:3,m:[],v:[],notes:{}},Sam:{version:3,m:[],v:[],notes:{}}});expanded.clear();focusSt=null;clearApplied=true;paint();fitAll(true);}
+  if(await saveNow()){clearDialog.close();flash('Map cleared. Undo is available in the options menu.');}
+  else document.getElementById('clearMessage').textContent=document.getElementById('saveState').textContent+' Try again to sync this change.';
+ }finally{clearConfirm.disabled=false;document.getElementById('clearCancel').disabled=false;clearConfirm.textContent=clearApplied?'Try again':'Clear map';}
+};
+
+/* ---------------- map image export ---------------- */
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
+}
+function buildExportSvg() {
+  // Freeze the current viewport and inline computed styles: no remote assets.
+  const clone = svg.cloneNode(true), originals = svg.querySelectorAll('*'), copies = clone.querySelectorAll('*');
+  const props = ['fill','stroke','stroke-width','stroke-linejoin','stroke-linecap','font-family','font-size','font-weight','letter-spacing','text-anchor','paint-order','opacity','display','visibility','vector-effect','flood-color','flood-opacity'];
+  originals.forEach((node,i) => {
+    const style = getComputedStyle(node);
+    for (const prop of props) {
+      let value = style.getPropertyValue(prop);
+      // Chrome sometimes resolves local paint servers into a document URL.
+      value = value.replace(/url\(["']?[^)"']*#([^)'" ]+)["']?\)/g,'url(#$1)');
+      if (value) copies[i].style.setProperty(prop,value);
+    }
+  });
+  clone.querySelector('#gFx').innerHTML = '';
+  const glow = clone.querySelector('#gGlow'); glow.innerHTML = '';
+  for (const st of STATES) {
+    const path = clone.querySelector('#p-' + st.c);
+    const fill=isBoth()?({ 'owner-alex':'#ffb34f','owner-sam':'#bca0ed','owner-both':'#56d9c0'}[ownerClass('state|'+st.c)]||'#ffb34f'):'#ffb34f';
+    path.style.fill = isOn(st.c) ? fill : 'url(#foil)';
+    if (isOn(st.c)) { const p = document.createElementNS(NS,'path');p.setAttribute('d',st.d);p.setAttribute('fill',fill);p.setAttribute('opacity','.21');glow.appendChild(p); }
+  }
+  clone.querySelectorAll('[data-lc]').forEach(t => {
+    if (!t.classList.contains('side') && isOn(t.dataset.lc)) { t.style.fill = '#241703'; t.style.stroke = 'rgba(255,255,255,.4)'; }
+  });
+  const rect = svg.getBoundingClientRect();
+  const width = Math.max(1,rect.width), height = Math.max(1,rect.height);
+  const scale = Math.min(width/VB.w,height/VB.h);
+  const extraX = (width/scale - VB.w)/2, extraY = (height/scale - VB.h)/2;
+  // Match the browser's letterboxed viewport, then add a title/legend outside it.
+  clone.setAttribute('viewBox',`${VB.x-extraX} ${VB.y-extraY} ${width/scale} ${height/scale}`);
+  clone.setAttribute('x','0');clone.setAttribute('y','104');clone.setAttribute('width',width);clone.setAttribute('height',height);
+  clone.removeAttribute('id'); clone.removeAttribute('style');
+  const output = document.createElementNS(NS,'svg'); output.setAttribute('xmlns',NS);
+  output.setAttribute('width',width); output.setAttribute('height',height+162);
+  output.setAttribute('viewBox',`0 0 ${width} ${height+162}`);
+  function rectNode(x,y,w,h,fill) {const r=document.createElementNS(NS,'rect');for(const [key,value] of Object.entries({x,y,width:w,height:h,fill}))r.setAttribute(key,value);output.appendChild(r);}
+  function textNode(x,y,text,size,fill) {const t=document.createElementNS(NS,'text');for(const [key,value] of Object.entries({x,y,fill,'font-size':size,'font-family':'system-ui, sans-serif'}))t.setAttribute(key,value);t.textContent=text;output.appendChild(t);}
+  rectNode(0,0,width,height+162,'#090b19');
+  textNode(24,40,'Our travels · Alex & Sam',Math.min(24,width/17),'#e7ecea');
+  textNode(24,70,`${totalStates()} / 50 states + DC · ${totalPlaces()} cities visited`,Math.min(14,width/25),'#a1b1b8');
+  output.appendChild(clone);
+  const y=height+130;
+  const keys=isBoth()?[['Alex','#ffb34f'],['Sam','#bca0ed'],['Both','#56d9c0'],['Unvisited','#222539']]:[['Visited','#ffb34f'],['Unvisited','#222539'],['City visited','#56d9c0']];
+  keys.forEach(([name,color],i)=>{rectNode(24+i*85,y-9,8,8,color);textNode(38+i*85,y,name,11,'#b4adc6');});
+  return {xml:new XMLSerializer().serializeToString(output),width,height:height+162};
+}
+document.getElementById('bImage').onclick = async function () {
+  this.disabled = true; const before = this.textContent; this.textContent = 'Saving…';
+  let url;
+  try {
+    const {xml,width,height} = buildExportSvg();
+    url = URL.createObjectURL(new Blob([xml],{type:'image/svg+xml;charset=utf-8'}));
+    const image = new Image();
+    await new Promise((resolve,reject) => { image.onload=resolve;image.onerror=reject;image.src=url; });
+    const canvas = document.createElement('canvas'), scale = Math.min(2,4096/Math.max(width,height));
+    canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
+    canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve,'image/png'));
+    if (!blob) throw new Error('Image export unavailable');
+    downloadBlob(blob,'scratch-map.png');flash('Map image saved.');
+  } catch(e) { flash('Could not save the image in this browser. Your map and backup are unchanged.'); }
+  finally {if(url) URL.revokeObjectURL(url);this.disabled=false;this.textContent=before;}
+};
+document.getElementById('bUndo').onclick = undoChange;
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey
+      && !e.target.closest('input,textarea,[contenteditable="true"]') && !memoryDialog.open) {
+    e.preventDefault(); undoChange();
+  }
+});
+
+/* ---------------- chrome ---------------- */
+document.getElementById('mState').onclick = () => setMode('state');
+document.getElementById('mCity').onclick = () => setMode('city');
+document.getElementById('zIn').onclick = () => { const r = svg.getBoundingClientRect(); zoomAt(r.left + r.width/2, r.top + r.height/2, 1.6); };
+document.getElementById('zOut').onclick = () => { const r = svg.getBoundingClientRect(); zoomAt(r.left + r.width/2, r.top + r.height/2, 1/1.6); };
+document.getElementById('zFit').onclick = () => { focusSt = null; fitAll(true); paint(); };
+window.addEventListener('resize', () => applyTransform());
+
+/* ---------------- go ---------------- */
+let cloudBusy = false;
+const appElement = document.getElementById('app'), access = document.getElementById('access');
+async function refreshJournal() {
+  if(cloudBusy || memoryDialog.open || bothMemoryDialog.open) return;
+  cloudBusy = true; appElement.inert = true;
+  try {
+    if (Cloud.dirty || saveT || document.getElementById('saveState').classList.contains('warn')) {
+      if(!await saveNow()) return;
+    }
+    await persistQueue;
+    applyData(await Cloud.read());undoStack.length=0;expanded.clear();clearEffects();paint();
+    document.getElementById('saveState').textContent=Cloud.dirty?'Draft kept on this device · save changes':'Saved on this device';
+  } catch(e) {flash(e.message);} finally {cloudBusy=false;appElement.inert=false;}
+}
+const statusSource=document.getElementById('saveState'),syncBadge=document.getElementById('syncBadge'),retrySync=document.getElementById('retrySync');
+function mirrorSync(){const text=statusSource.textContent;const saved=text==='Saved on this device';const saving=/Saving|saving|Loading/.test(text);syncBadge.textContent=saved?'✓ Saved':saving?'Saving…':'Needs saving';syncBadge.dataset.state=saved?'saved':saving?'saving':'error';syncBadge.title=text;retrySync.hidden=saved||saving;}
+new MutationObserver(mirrorSync).observe(statusSource,{childList:true,characterData:true,subtree:true});mirrorSync();
+retrySync.onclick=async()=>{retrySync.disabled=true;try{await refreshJournal();}finally{retrySync.disabled=false;}};
+const optionsToggle=document.getElementById('optionsToggle'),mapOptions=document.getElementById('mapOptions');
+function setOptions(open){mapOptions.hidden=!open;optionsToggle.setAttribute('aria-expanded',String(open));}
+optionsToggle.onclick=()=>setOptions(mapOptions.hidden);
+document.addEventListener('click',e=>{if(!e.target.closest('.options-wrap'))setOptions(false);});
+mapOptions.addEventListener('click',e=>{if(e.target.closest('button')&&!e.target.closest('button').disabled)setOptions(false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!mapOptions.hidden){setOptions(false);optionsToggle.focus();}});
+document.getElementById('reloadCloud').onclick=refreshJournal;
+document.getElementById('signOut').onclick=async () => {
+  if(!await saveNow()) {flash('Export your draft before leaving; cloud save failed.');return;}
+  await Cloud.logout();
+};
+setInterval(() => {if(Cloud.signedIn && !document.hidden && !saveT && !memoryDialog.open && !bothMemoryDialog.open && document.getElementById('saveState').textContent==='Saved on this device') refreshJournal();},15000);
+
+(async()=>{try{await load();appElement.inert=false;}catch(e){document.getElementById('saveState').textContent=e.message;}fitAll(false);paint();})();
+</script>
+</body>
+</html>
