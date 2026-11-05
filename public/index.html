@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scratch map — United States</title>
 <link rel="icon" href="icon.svg"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0e1418"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="icon.svg">
-<meta name="description" content="Alex and Sam’s private shared travel map, with color-coded visits, synced memories, photos and portable backups.">
+<meta name="description" content="A pixel-art first-visit travel map for two travelers, with color-coded visits, memories, photos and JSON backups. Saved only in your browser.">
 <meta name="theme-color" content="#0e1418">
 <style>
   :root{
@@ -425,6 +425,7 @@ header{position:relative}.options-wrap{position:relative;flex:none}#optionsToggl
 .year-control{display:flex;flex-direction:column;align-items:stretch;gap:10px}.filter-row{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:10px}.filter-row select{width:100%;min-width:0}.filter-row label{margin:0}
 #clearDialog{margin:auto;width:min(420px,calc(100vw - 32px));padding:24px;background:#191628;color:var(--ink);border:1px solid #80668b;border-radius:12px;box-shadow:0 20px 80px #0008}#clearDialog::backdrop{background:#050614bb;backdrop-filter:blur(3px)}#clearDialog h2{margin:0 0 14px;font-size:22px}#clearDialog p{color:var(--ink-60);font-size:13px;line-height:1.7}#clearConfirm{color:#ffd7d7;background:#73343f;border:1px solid #a45e68}#clearMessage:empty{display:none}
 #helpDialog{margin:auto;width:min(500px,calc(100vw - 32px));max-height:calc(100dvh - 48px);overflow:auto;padding:24px;background:#191628;color:var(--ink);border:1px solid #80668b;border-radius:12px;box-shadow:0 20px 80px #0008}#helpDialog::backdrop{background:#050614bb;backdrop-filter:blur(3px)}#helpDialog h2{margin:0 0 14px;font-size:22px}#helpDialog ul{padding-left:20px}#helpDialog li,#helpDialog p{font-size:13px;line-height:1.7;color:var(--ink-60);margin-bottom:9px}
+#namesDialog{margin:auto;width:min(420px,calc(100vw - 32px));padding:24px;background:#191628;color:var(--ink);border:1px solid #80668b;border-radius:12px;box-shadow:0 20px 80px #0008}#namesDialog::backdrop{background:#050614bb;backdrop-filter:blur(3px)}#namesDialog h2{margin:0 0 14px;font-size:22px}#namesDialog p{color:var(--ink-60);font-size:13px;line-height:1.7}#namesDialog label{display:block;font-size:12px;margin:16px 0 7px}#namesDialog label span{color:var(--ink-60);font-size:11px}#namesDialog input{font:inherit;font-size:16px;color:var(--ink);color-scheme:dark;display:block;width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;background:#0d0f1d;border:1px solid #41535e;border-radius:6px}#namesDialog input:focus-visible{outline:2px solid var(--green);outline-offset:1px}#namesMessage{color:#ffc2c2}#namesMessage:empty{display:none}
 /* Individual images use their full bounds, never sprite windows. */
 .companion{display:block;background:none;width:44px;height:52px;object-fit:contain;object-position:center;clip-path:none;transform:none;image-rendering:pixelated;flex:none;pointer-events:none}
 .brand-icon{width:60px;height:70px}.brand-icon .companion{width:60px;height:70px;transform:none}
@@ -438,7 +439,7 @@ footer{padding-right:16px!important}
 <div id="app" inert>
   <header>
     <div class="brand-icon" aria-hidden="true"><img class="companion character-penguin" src="penguin-traveler.png" alt="" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Z"/><path d="M9 3v16M15 5v16"/><circle cx="15" cy="10" r="2.5" fill="#131b20"/></svg></div>
-    <div class="brand-title"><h1>Our travels</h1><span class="tag">Alex &amp; Sam · Your first-visit travel journal</span><div class="sync-line"><span id="syncBadge" role="status" aria-live="polite">Loading…</span><button id="retrySync" hidden type="button">Retry</button></div></div>
+    <div class="brand-title"><h1>Our travels</h1><span class="tag"><span data-name="Alex">Alex</span> &amp; <span data-name="Sam">Sam</span> · Your first-visit travel journal</span><div class="sync-line"><span id="syncBadge" role="status" aria-live="polite">Loading…</span><button id="retrySync" hidden type="button">Retry</button></div></div>
     <div class="score">
       <div class="state-score"><b class="num" id="nStates">0</b><span> / 50 states + DC</span>
         <i class="meter"><u id="meterFill"></u></i></div>
@@ -449,6 +450,7 @@ footer{padding-right:16px!important}
       <button id="bImage">Save image</button>
       <button id="bExport" title="Export a JSON backup of marks and memories">Export</button>
       <button id="bImport" title="Import a JSON backup">Import</button>
+      <button id="bNames" type="button">Traveler names</button>
       <button id="bHelp" type="button">How it works</button>
       <button id="bReset" class="danger">Clear all</button>
 </div></div>
@@ -491,7 +493,7 @@ footer{padding-right:16px!important}
       </div>
     </div>
 
-    <div class="map-legend" aria-label="Map legend"><span class="personal-key"><i class="sw-on"></i>Visited</span><span class="shared-key"><i class="key-alex"></i>Alex</span><span class="shared-key"><i class="key-sam"></i>Sam</span><span class="shared-key"><i class="key-both"></i>Both</span><span><i class="sw-off"></i>Still to explore</span><span class="city-key"><i class="sw-city"></i>City visited</span></div>
+    <div class="map-legend" aria-label="Map legend"><span class="personal-key"><i class="sw-on"></i>Visited</span><span class="shared-key"><i class="key-alex"></i><span data-name="Alex">Alex</span></span><span class="shared-key"><i class="key-sam"></i><span data-name="Sam">Sam</span></span><span class="shared-key"><i class="key-both"></i>Both</span><span><i class="sw-off"></i>Still to explore</span><span class="city-key"><i class="sw-city"></i>City visited</span></div>
     
     <div id="memoryHover" role="tooltip" aria-hidden="true" hidden></div>
     <div class="hint" id="hint" role="status" aria-live="polite"></div>
@@ -504,7 +506,7 @@ footer{padding-right:16px!important}
       <div class="search-field"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="q" placeholder="Find a state or city…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="results"></div>
       <div id="results" role="listbox" aria-label="Matching states and cities"></div>
     </div>
-    <div class="year-control"><div class="filter-row"><label for="yearFilter">First-visit year</label><select id="yearFilter"><option value="all">All years</option></select></div><div class="filter-row"><label for="travelerFilter">Traveler</label><select id="travelerFilter"><option value="all">All travelers</option><option>Alex</option><option>Sam</option><option>Both</option></select></div><p>First visits only · saved in this browser, not shared online.</p></div>
+    <div class="year-control"><div class="filter-row"><label for="yearFilter">First-visit year</label><select id="yearFilter"><option value="all">All years</option></select></div><div class="filter-row"><label for="travelerFilter">Traveler</label><select id="travelerFilter"><option value="all">All travelers</option><option value="Alex" data-name="Alex">Alex</option><option value="Sam" data-name="Sam">Sam</option><option value="Both">Both</option></select></div><p>First visits only · saved in this browser, not shared online.</p></div>
     <div class="grouphead">
       <span id="listTitle">All states</span>
       <span class="sp"></span>
@@ -530,17 +532,18 @@ footer{padding-right:16px!important}
         <li>Search opens visit details without changing your map view. Use a state name or abbreviation, or “city, state”.</li>
         <li>Use ✎ beside a visited state or city to save when you first visited, a memory and a photo. Hover the state or city dot on the map to preview them.</li>
         <li>Undo restores your last change. Save image exports your current map view as a PNG.</li>
-        <li>One shared map shows Alex in amber, Sam in violet and both in teal. Choose who visited when saving a place. This public edition saves visits only in this browser. It does not upload or share your travel data. Export a backup before switching devices or clearing browser data.</li>
+        <li>One shared map shows <span data-name="Alex">Alex</span> in amber, <span data-name="Sam">Sam</span> in violet and both in teal. Use ⋯ → Traveler names to show your own names. Choose who visited when saving a place. This public edition saves visits only in this browser. It does not upload or share your travel data. Export a backup before switching devices or clearing browser data.</li>
       </ul><p>Year and traveler filters only change what you see. This map records first visits, not repeat trips.</p><div class="memory-actions"><button id="helpClose" type="button">Got it</button></div></dialog>
+<dialog id="namesDialog" aria-labelledby="namesTitle"><form id="namesForm" novalidate><h2 id="namesTitle">Traveler names</h2><p>Show your own names on the map. They’re saved only in this browser.</p><label for="nameAlex">First traveler <span>(amber)</span></label><input id="nameAlex" maxlength="24" autocomplete="off" placeholder="Alex"><label for="nameSam">Second traveler <span>(violet)</span></label><input id="nameSam" maxlength="24" autocomplete="off" placeholder="Sam"><p>Leave a box empty to use Alex or Sam.</p><p id="namesMessage" role="alert"></p><div class="memory-actions"><button id="namesCancel" type="button">Cancel</button><button id="namesSave" type="submit">Save names</button></div></form></dialog>
 <dialog id="clearDialog" aria-labelledby="clearTitle"><h2 id="clearTitle">Clear the whole map?</h2><p>This removes both travelers’ visited places, dates, memories and photos, including places hidden by filters. You can undo this while this page stays open.</p><p id="clearMessage" role="status"></p><div class="memory-actions"><button id="clearCancel" type="button">Cancel</button><button id="clearConfirm" type="button" class="danger">Clear map</button></div></dialog>
-<dialog id="backupDialog"><h2>Import travel backup</h2><p>This replaces the selected saved visits and memories. Undo can restore the previous map.</p><label for="backupTarget">Assign this older backup to</label><select id="backupTarget"><option>Alex</option><option>Sam</option><option>Both</option></select><div class="memory-actions"><button id="backupCancel">Cancel</button><button id="backupConfirm">Import backup</button></div></dialog>
+<dialog id="backupDialog"><h2>Import travel backup</h2><p>This replaces the selected saved visits and memories. Undo can restore the previous map.</p><label for="backupTarget">Assign this older backup to</label><select id="backupTarget"><option value="Alex" data-name="Alex">Alex</option><option value="Sam" data-name="Sam">Sam</option><option value="Both">Both</option></select><div class="memory-actions"><button id="backupCancel">Cancel</button><button id="backupConfirm">Import backup</button></div></dialog>
 <dialog id="memoryDialog" aria-labelledby="memoryTitle">
   <form id="memoryForm" novalidate>
     <div class="eyebrow">A memory from your travels</div><h2 id="memoryTitle">Visit details</h2>
-    <label for="visitWho">Who visited?</label><select id="visitWho"><option value="none">Remove visit</option><option>Alex</option><option>Sam</option><option>Both</option></select>
+    <label for="visitWho">Who visited?</label><select id="visitWho"><option value="none">Remove visit</option><option value="Alex" data-name="Alex">Alex</option><option value="Sam" data-name="Sam">Sam</option><option value="Both">Both</option></select>
     <p id="entryCredit" class="added-credit"></p>
     <p id="rollupHelp" class="photo-help" hidden>City visits also count toward this state. Remove its city visits to clear the state completely.</p>
-    <div id="sharedDetails" style="display:none"><label for="memoryWho">Details for</label><select id="memoryWho"><option>Alex</option><option>Sam</option></select><label class="apply-both"><input id="applyBoth" type="checkbox"> Use these details for both of us</label></div>
+    <div id="sharedDetails" style="display:none"><label for="memoryWho">Details for</label><select id="memoryWho"><option value="Alex" data-name="Alex">Alex</option><option value="Sam" data-name="Sam">Sam</option></select><label class="apply-both"><input id="applyBoth" type="checkbox"> Use these details for both of us</label></div>
     <div id="memoryFields">
     <label for="visitMonth">First visited <span>(month and year · optional)</span></label>
     <div class="visit-period"><select id="visitMonth" aria-label="First visit month"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select><input id="visitYear" type="number" min="1" max="9999" step="1" inputmode="numeric" placeholder="Year" aria-label="First visit year"></div>
@@ -1078,7 +1081,7 @@ function refreshYearView(){
 document.getElementById('yearFilter').onchange=e=>{selectedYear=e.target.value;listFilter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter==='all'));paint();};
 document.getElementById('travelerFilter').onchange=e=>{travelerFilter=e.target.value;paint();};
 function ownerClass(key) {const names=owners(key);return names.length===2?'owner-both':names.length?'owner-'+names[0].toLowerCase():'';}
-function ownerBadges(key) {return isBoth()?'<span class="owner-badges">'+owners(key).map(name=>`<span class="owner-badge ${name.toLowerCase()}">${name}</span>`).join('')+'</span>':'';}
+function ownerBadges(key) {return isBoth()?'<span class="owner-badges">'+owners(key).map(name=>`<span class="owner-badge ${name.toLowerCase()}">${esc(TravelerNames.label(name))}</span>`).join('')+'</span>':'';}
 function credit(d,key) {
   if(d.addedBy?.[key])return 'Added by '+d.addedBy[key];
   if(key.startsWith('state|') && !d.m.includes(key.slice(6))){const keys=d.v.filter(k=>k.startsWith(key.slice(6)+'|'));const names=[...new Set(keys.map(k=>d.addedBy?.[k]).filter(Boolean))];return names.length?'Added through city visits by '+names.join(' & '):'Visited through city entries · earlier authors not recorded';}
@@ -1089,7 +1092,7 @@ function sharedMemoryMarkup(key,preview=false) {
  if(!names.length)return '<p class="combined-help">No visit in this selection.</p>';
  const notes=[...new Set(entries.map(m=>m.note).filter(Boolean))],dates=[...new Set(entries.map(m=>m.date).filter(Boolean))].sort(),photos=[...new Set(entries.map(m=>m.photo).filter(Boolean))];
  const text=notes.join('\n\n'),shown=preview&&text.length>160?text.slice(0,157)+'…':text;
- return `<section class="shared-memory"><h3>${names.map(name=>`<span class="owner-badge ${name.toLowerCase()}">${name}</span>`).join(' ')}</h3>${dates.length?`<p class="hover-date">First visited · ${dates.map(d=>esc(displayDate(d))).join(' · ')}</p>`:''}${photos.map(photo=>`<img src="${photo}" alt="Travel memory photo">`).join('')}${shown?`<p>${esc(shown)}</p>`:''}${!shown&&!photos.length?'<p class="combined-help">Add a memory from this trip.</p>':''}</section>`;
+ return `<section class="shared-memory"><h3>${names.map(name=>`<span class="owner-badge ${name.toLowerCase()}">${esc(TravelerNames.label(name))}</span>`).join(' ')}</h3>${dates.length?`<p class="hover-date">First visited · ${dates.map(d=>esc(displayDate(d))).join(' · ')}</p>`:''}${photos.map(photo=>`<img src="${photo}" alt="Travel memory photo">`).join('')}${shown?`<p>${esc(shown)}</p>`:''}${!shown&&!photos.length?'<p class="combined-help">Add a memory from this trip.</p>':''}</section>`;
 }
 const bothMemoryDialog=document.getElementById('bothMemoryDialog');
 function openBothMemory(key) {
@@ -1145,7 +1148,7 @@ svg.addEventListener('pointerleave',hideMemoryHover);
 const listEl = document.getElementById('list');
 function renderList() {
   const arr = STATES.filter(s => ((selectedYear==='all'&&travelerFilter==='all')||isOn(s.c)) && (listFilter === 'all' || (listFilter === 'visited' ? isOn(s.c) : !isOn(s.c))));
-  document.getElementById('listTitle').textContent = `${listFilter === 'all' ? 'All states' : listFilter === 'visited' ? 'Visited states' : 'Unvisited states'} · ${arr.length}${selectedYear==='all'?'':' · '+(selectedYear==='undated'?'Year not recorded':selectedYear)}${travelerFilter==='all'?'':' · '+(travelerFilter==='Both'?'Both visited':travelerFilter)}`;
+  document.getElementById('listTitle').textContent = `${listFilter === 'all' ? 'All states' : listFilter === 'visited' ? 'Visited states' : 'Unvisited states'} · ${arr.length}${selectedYear==='all'?'':' · '+(selectedYear==='undated'?'Year not recorded':selectedYear)}${travelerFilter==='all'?'':' · '+(travelerFilter==='Both'?'Both visited':TravelerNames.label(travelerFilter))}`;
   if (sortBy === 'places') arr.sort((a, b) => (cityCount[b.c]||0) - (cityCount[a.c]||0) || a.n.localeCompare(b.n));
   else arr.sort((a, b) => a.n.localeCompare(b.n));
   let h = arr.length ? '' : `<div class="empty-ledger">${selectedYear!=='all'||travelerFilter!=='all' ? 'No first visits match these filters.' : listFilter === 'visited' ? 'Your visited states will appear here. Mark a state or find a city to begin.' : 'You have uncovered every state and DC. What a journey!'}</div>`;
@@ -1218,7 +1221,7 @@ function entryFields(m={}) {return {month:m.date?.slice(5,7)||'',year:m.date?Str
 function stashFields(){draftEntries[activeMemoryPerson]={month:document.getElementById('visitMonth').value,year:document.getElementById('visitYear').value.trim(),note:document.getElementById('visitNote').value,photo:draftPhoto};}
 function fillFields(){const d=draftEntries[activeMemoryPerson];document.getElementById('visitMonth').value=d.month;document.getElementById('visitYear').value=d.year;document.getElementById('visitNote').value=d.note;draftPhoto=d.photo;updatePhotoPreview();}
 function visitNames(){const who=document.getElementById('visitWho').value;return who==='Both'?['Alex','Sam']:who==='none'?[]:[who];}
-function updateEntryControls(){const names=visitNames();document.getElementById('entryCredit').textContent=names.map(name=>name+': '+(journalOwns(Cloud.journals[name],editingMemory)?credit(Cloud.journals[name],editingMemory):'new visit')).join(' · ');document.getElementById('memoryFields').hidden=!names.length;document.getElementById('sharedDetails').hidden=names.length!==2;if(names.length===1)activeMemoryPerson=names[0];else if(names.length===2)activeMemoryPerson='Both';fillFields();}
+function updateEntryControls(){const names=visitNames();document.getElementById('entryCredit').textContent=names.map(name=>TravelerNames.label(name)+': '+(journalOwns(Cloud.journals[name],editingMemory)?credit(Cloud.journals[name],editingMemory):'new visit')).join(' · ');document.getElementById('memoryFields').hidden=!names.length;document.getElementById('sharedDetails').hidden=names.length!==2;if(names.length===1)activeMemoryPerson=names[0];else if(names.length===2)activeMemoryPerson='Both';fillFields();}
 function openMemory(key,at=null) {
   hideMemoryHover();editingMemory=key;visitPoint=at;memoryOpener=document.activeElement;memoryGeneration++;
   document.getElementById('memoryTitle').textContent=key.startsWith('state|')?SMAP[key.slice(6)].n:`${CN[IDX[key]]}, ${CST[IDX[key]]}`;
@@ -1286,7 +1289,7 @@ async function saveMemory(e) {
   e?.preventDefault();if(!editingMemory||photoBusy||memorySave.disabled)return;
   stashFields();const names=visitNames(),key=editingMemory,generation=memoryGeneration;
   if(names.length===2){const shared={...draftEntries[activeMemoryPerson]};draftEntries.Alex={...shared};draftEntries.Sam={...shared};}
-  const details={};for(const name of names){const d=draftEntries[name];if(!!d.month!==!!d.year){memoryMessage.textContent='Choose a month and year for '+name+', or leave both blank.';return;}const date=d.month&&d.year?d.year.padStart(4,'0')+'-'+d.month:'';if(date&&!validMonth(date)){memoryMessage.textContent='Enter a valid month and whole year for '+name+'.';return;}if(d.note.length>2000){memoryMessage.textContent='Keep each memory under 2,000 characters.';return;}details[name]={date,note:d.note.trim(),photo:d.photo};}
+  const details={};for(const name of names){const d=draftEntries[name];if(!!d.month!==!!d.year){memoryMessage.textContent='Choose a month and year for '+TravelerNames.label(name)+', or leave both blank.';return;}const date=d.month&&d.year?d.year.padStart(4,'0')+'-'+d.month:'';if(date&&!validMonth(date)){memoryMessage.textContent='Enter a valid month and whole year for '+TravelerNames.label(name)+'.';return;}if(d.note.length>2000){memoryMessage.textContent='Keep each memory under 2,000 characters.';return;}details[name]={date,note:d.note.trim(),photo:d.photo};}
   const next=payload(),before=isOn(key.startsWith('state|')?key.slice(6):CST[IDX[key]]);
   for(const name of ['Alex','Sam']){
     const d=next.journals[name],state=key.startsWith('state|'),values=new Set(state?d.m:d.v),value=state?key.slice(6):key;
@@ -1527,6 +1530,13 @@ document.getElementById('backupConfirm').onclick=async()=>{
 };
 const resetBtn = document.getElementById('bReset');
 const helpDialog=document.getElementById('helpDialog');document.getElementById('bHelp').onclick=()=>helpDialog.showModal();document.getElementById('helpClose').onclick=()=>helpDialog.close();helpDialog.addEventListener('close',()=>document.getElementById('optionsToggle').focus());
+function applyNames(){document.querySelectorAll('[data-name]').forEach(el=>{el.textContent=TravelerNames.label(el.dataset.name);});}
+applyNames();
+const namesDialog=document.getElementById('namesDialog'),namesMessage=document.getElementById('namesMessage');
+document.getElementById('bNames').onclick=()=>{const n=TravelerNames.get();document.getElementById('nameAlex').value=n.Alex||'';document.getElementById('nameSam').value=n.Sam||'';namesMessage.textContent='';namesDialog.showModal();};
+document.getElementById('namesCancel').onclick=()=>namesDialog.close();
+namesDialog.addEventListener('close',()=>document.getElementById('optionsToggle').focus());
+document.getElementById('namesForm').onsubmit=e=>{e.preventDefault();try{TravelerNames.set({Alex:document.getElementById('nameAlex').value,Sam:document.getElementById('nameSam').value});}catch(err){namesMessage.textContent=err.message;return;}applyNames();paint();namesDialog.close();flash('Traveler names saved in this browser.');};
 const clearDialog=document.getElementById('clearDialog'),clearConfirm=document.getElementById('clearConfirm');let clearApplied=false;
 resetBtn.onclick=()=>{
  if(!Object.values(Cloud.journals).some(d=>d.m.length||d.v.length)){flash('Nothing to clear yet.');return;}
@@ -1587,11 +1597,11 @@ function buildExportSvg() {
   function rectNode(x,y,w,h,fill) {const r=document.createElementNS(NS,'rect');for(const [key,value] of Object.entries({x,y,width:w,height:h,fill}))r.setAttribute(key,value);output.appendChild(r);}
   function textNode(x,y,text,size,fill) {const t=document.createElementNS(NS,'text');for(const [key,value] of Object.entries({x,y,fill,'font-size':size,'font-family':'system-ui, sans-serif'}))t.setAttribute(key,value);t.textContent=text;output.appendChild(t);}
   rectNode(0,0,width,height+162,'#090b19');
-  textNode(24,40,'Our travels · Alex & Sam',Math.min(24,width/17),'#e7ecea');
+  textNode(24,40,'Our travels · '+TravelerNames.label('Alex')+' & '+TravelerNames.label('Sam'),Math.min(24,width/17),'#e7ecea');
   textNode(24,70,`${totalStates()} / 50 states + DC · ${totalPlaces()} cities visited`,Math.min(14,width/25),'#a1b1b8');
   output.appendChild(clone);
   const y=height+130;
-  const keys=isBoth()?[['Alex','#ffb34f'],['Sam','#bca0ed'],['Both','#56d9c0'],['Unvisited','#222539']]:[['Visited','#ffb34f'],['Unvisited','#222539'],['City visited','#56d9c0']];
+  const keys=isBoth()?[[TravelerNames.label('Alex'),'#ffb34f'],[TravelerNames.label('Sam'),'#bca0ed'],['Both','#56d9c0'],['Unvisited','#222539']]:[['Visited','#ffb34f'],['Unvisited','#222539'],['City visited','#56d9c0']];
   keys.forEach(([name,color],i)=>{rectNode(24+i*85,y-9,8,8,color);textNode(38+i*85,y,name,11,'#b4adc6');});
   return {xml:new XMLSerializer().serializeToString(output),width,height:height+162};
 }

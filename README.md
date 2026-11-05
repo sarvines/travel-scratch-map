@@ -11,7 +11,8 @@ A pixel-art US travel journal for two travelers. Scratch off the states and citi
 ## Features
 
 - **Scratch-off US map** of all 50 states and DC, with city search, zoom and pan, scratch effects and optional quiet sound.
-- **Two travelers, three colours:** places visited by Alex, by Sam, or by both.
+- **Two travelers, three colours:** places visited by the first traveler, the second, or both.
+- **Your own names:** ⋯ → Traveler names replaces “Alex” and “Sam” everywhere on the map, saved only in your browser.
 - **Memories:** a month and year, a short note and one compressed photo for each state or city.
 - **Filters** by first-visit year and by traveler, with memory previews.
 - **Your data stays yours:** saved in this browser's storage only; no login, no server, no analytics.
@@ -37,7 +38,7 @@ npm run build    # build the static site into dist/
 
 Everything is saved to **this browser's localStorage**. Each visitor starts with an empty map, and nothing is sent anywhere. Opening the map in another browser or device starts a new, empty map, so export a JSON backup before clearing browser data or switching devices. Importing a backup replaces the current map. Photos count toward the browser's storage limit; if a save fails, the app warns you and keeps your data available to export.
 
-Alex and Sam are neutral example names.
+Alex and Sam are the default names. Traveler names are saved separately in the same browser, so renaming never changes your saved visits or backups.
 
 ## Project structure
 
@@ -47,7 +48,7 @@ Alex and Sam are neutral example names.
 - `public/penguin-traveler.png`, `public/panda.png`: the companion characters.
 - `scripts/`: the local server and build script. `tests/`: storage and path checks.
 
-To rename the travelers, change the `Alex` and `Sam` keys and their lowercase CSS identifiers together, and convert any existing backups. Adding display labels while keeping the storage keys stable is the safer route.
+Visitors rename the travelers from the ⋯ menu. Underneath, the storage keys stay `Alex` and `Sam` (with matching lowercase CSS identifiers); `TravelerNames` in `public/cloud.js` supplies the display labels. Keep those keys stable so existing maps and backups keep working.
 
 ## Licence and credits
 
