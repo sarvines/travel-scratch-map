@@ -2,7 +2,7 @@
 
 A pixel-art US travel journal for two travelers. Scratch off the states and cities you visit for the first time, attach a memory and a photo, and explore your map by year or by traveler.
 
-**[▶ Try it in your browser](https://sarvin-eshaghi.pages.dev/side-projects/travel-scratch-map/)** — no account needed. Your map is saved only in your own browser.
+**[▶ Try it in your browser](https://sarvineshaghi.com/side-projects/travel-scratch-map/)** — no account needed. Your map is saved only in your own browser.
 
 ![Travel Scratch Map with synthetic sample entries: California, Illinois and Texas scratched off for two example travelers](docs/demo.png)
 
@@ -56,4 +56,4 @@ Visitors rename the travelers from the ⋯ menu. Underneath, the storage keys st
 
 The penguin and panda were generated with an AI image tool (ImageGen) for this project.
 
-Made by [Sarvin Eshaghi](https://sarvin-eshaghi.pages.dev/).
+Made by [Sarvin Eshaghi](https://sarvineshaghi.com/).
